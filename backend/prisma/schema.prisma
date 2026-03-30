@@ -1,0 +1,82 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GlobalConfig {
+  id               String   @id @default(uuid())
+  isServiceActive  Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  polls     Poll[]
+  votes     Vote[]
+}
+
+model User {
+  id             String        @id @default(uuid())
+  name           String
+  email          String        @unique
+  passwordHash   String
+  role           Role          @default(USER)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  pollsCreated   Poll[]        @relation("PollCreator")
+  votes          Vote[]
+}
+
+model Poll {
+  id             String        @id @default(uuid())
+  question       String
+  createdBy      String
+  creator        User          @relation("PollCreator", fields: [createdBy], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  options        PollOption[]
+  votes          Vote[]
+}
+
+model PollOption {
+  id         String   @id @default(uuid())
+  pollId     String
+  poll       Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionText String
+  votes      Vote[]
+}
+
+model Vote {
+  id             String       @id @default(uuid())
+  pollId         String
+  poll           Poll         @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId       String
+  option         PollOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@unique([pollId, userId]) // Prevent duplicate voting
+}
