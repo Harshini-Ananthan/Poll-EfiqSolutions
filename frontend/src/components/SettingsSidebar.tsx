@@ -13,7 +13,7 @@ import {
   TriangleAlert 
 } from "lucide-react";
 
-export function SettingsSidebar() {
+export default function SettingsSidebar() {
   const pathname = usePathname();
 
   const sections = [

@@ -5,15 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { User, LogOut } from "lucide-react";
 
-export function Sidebar() {
+export default function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard" },
-    { name: "New Poll", href: "/new-poll" },
-    { name: "Poll Data", href: "/poll-data" },
-    { name: "Export", href: "/export" },
-    { name: "Settings", href: "/settings" },
+    { name: "New Poll", href: "/dashboard/new-poll" },
+    { name: "Poll Data", href: "/dashboard/poll-data" },
+    { name: "Export", href: "/dashboard/export" },
+    { name: "Settings", href: "/dashboard/settings" },
   ];
 
   return (
