@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -22,13 +22,21 @@ enum Role {
 }
 
 model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
-  polls     Poll[]
-  votes     Vote[]
+  id                   String   @id @default(uuid())
+  name                 String
+  shortName            String?
+  logo                 String?
+  adminEmail           String?
+  phone                String?
+  address              String?
+  dailyPollReminder    Boolean  @default(true)
+  cutoffReminder       Boolean  @default(true)
+  adminCommentAlert    Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  users                User[]
+  polls                Poll[]
+  votes                Vote[]
 }
 
 model User {
@@ -37,6 +45,9 @@ model User {
   email          String        @unique
   passwordHash   String
   role           Role          @default(USER)
+  status         String        @default("Active")
+  mobileNo       String?
+  department     String?
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
   createdAt      DateTime      @default(now())
@@ -46,16 +57,21 @@ model User {
 }
 
 model Poll {
-  id             String        @id @default(uuid())
-  question       String
-  createdBy      String
-  creator        User          @relation("PollCreator", fields: [createdBy], references: [id])
-  organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  options        PollOption[]
-  votes          Vote[]
+  id                   String        @id @default(uuid())
+  question             String
+  createdBy            String
+  creator              User          @relation("PollCreator", fields: [createdBy], references: [id])
+  organizationId       String
+  organization         Organization  @relation(fields: [organizationId], references: [id])
+  scheduledAt          DateTime?     @default(now())
+  isActive             Boolean       @default(true)
+  sendPushNotification Boolean       @default(false)
+  allowVoteEdit        Boolean       @default(false)
+  sendReminder         Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  options              PollOption[]
+  votes                Vote[]
 }
 
 model PollOption {
@@ -63,6 +79,7 @@ model PollOption {
   pollId     String
   poll       Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
   optionText String
+  type       String?  // e.g. "Veg", "Non-Veg", "Special"
   votes      Vote[]
 }
 

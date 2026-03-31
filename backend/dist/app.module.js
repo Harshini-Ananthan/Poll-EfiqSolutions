@@ -16,12 +16,13 @@ const organizations_module_1 = require("./organizations/organizations.module");
 const polls_module_1 = require("./polls/polls.module");
 const votes_module_1 = require("./votes/votes.module");
 const superadmin_module_1 = require("./superadmin/superadmin.module");
+const prisma_module_1 = require("./prisma/prisma.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [auth_module_1.AuthModule, users_module_1.UsersModule, organizations_module_1.OrganizationsModule, polls_module_1.PollsModule, votes_module_1.VotesModule, superadmin_module_1.SuperadminModule],
+        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule, users_module_1.UsersModule, organizations_module_1.OrganizationsModule, polls_module_1.PollsModule, votes_module_1.VotesModule, superadmin_module_1.SuperadminModule],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
     })
