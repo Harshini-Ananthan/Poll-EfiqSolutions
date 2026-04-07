@@ -15,17 +15,5 @@ export declare class AuthService {
             organizationId: any;
         };
     }>;
-    changePassword(userId: string, currentPass: string, newPass: string): Promise<{
-        id: string;
-        email: string;
-        name: string;
-        passwordHash: string;
-        role: import(".prisma/client").$Enums.Role;
-        status: string;
-        mobileNo: string | null;
-        department: string | null;
-        organizationId: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    }>;
+    changePassword(userId: string, currentPass: string, newPass: string): Promise<any>;
 }

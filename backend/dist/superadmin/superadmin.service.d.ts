@@ -3,29 +3,16 @@ export declare class SuperadminService {
     private prisma;
     constructor(prisma: PrismaService);
     getDashboardStats(organizationId: string): Promise<{
-        totalCustomers: number;
-        votedToday: number;
+        totalCustomers: any;
+        votedToday: any;
         notVotedToday: number;
-        monthMealsServed: number;
+        monthMealsServed: any;
         latestPoll: {
-            id: string;
-            question: string;
-            scheduledAt: Date | null;
-            options: {
-                text: string;
-                count: number;
-                type: string | null;
-            }[];
+            id: any;
+            question: any;
+            scheduledAt: any;
+            options: any;
         } | null;
     }>;
-    getOrganizationUsers(organizationId: string): Promise<{
-        id: string;
-        email: string;
-        name: string;
-        role: import(".prisma/client").$Enums.Role;
-        status: string;
-        mobileNo: string | null;
-        department: string | null;
-        createdAt: Date;
-    }[]>;
+    getOrganizationUsers(organizationId: string): Promise<any>;
 }
