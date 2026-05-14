@@ -1,16 +1,16 @@
 import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { PollsService } from './polls.service';
 import { CreatePollDto } from './dto/create-poll.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 
 @Controller('polls')
-@UseGuards(JwtAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class PollsController {
   constructor(private readonly pollsService: PollsService) {}
 
   @Post()
   create(@Body() createPollDto: CreatePollDto, @Request() req: any) {
-    return this.pollsService.create(createPollDto, req.user.userId, req.user.organizationId);
+    return this.pollsService.create(createPollDto, req.user.id, req.user.organizationId);
   }
 
   @Get()

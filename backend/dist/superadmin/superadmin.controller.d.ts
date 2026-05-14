@@ -3,16 +3,29 @@ export declare class SuperadminController {
     private readonly superadminService;
     constructor(superadminService: SuperadminService);
     getStats(req: any): Promise<{
-        totalCustomers: any;
-        votedToday: any;
+        totalCustomers: number;
+        votedToday: number;
         notVotedToday: number;
-        monthMealsServed: any;
+        monthMealsServed: number;
         latestPoll: {
-            id: any;
+            id: string;
             question: any;
             scheduledAt: any;
-            options: any;
+            options: {
+                text: any;
+                count: number;
+                type: any;
+            }[];
         } | null;
     }>;
-    getUsers(req: any): Promise<any>;
+    getUsers(req: any): Promise<{
+        id: string;
+        name: any;
+        email: any;
+        role: any;
+        status: any;
+        mobileNo: any;
+        department: any;
+        createdAt: any;
+    }[]>;
 }

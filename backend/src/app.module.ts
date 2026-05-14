@@ -7,10 +7,16 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { PollsModule } from './polls/polls.module';
 import { VotesModule } from './votes/votes.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
-import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, OrganizationsModule, PollsModule, VotesModule, SuperadminModule],
+  imports: [
+    AuthModule, 
+    UsersModule, 
+    OrganizationsModule, 
+    PollsModule, 
+    VotesModule, 
+    SuperadminModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

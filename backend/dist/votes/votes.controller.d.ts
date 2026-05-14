@@ -5,5 +5,12 @@ export declare class VotesController {
     create(body: {
         pollId: string;
         optionId: string;
-    }, req: any): Promise<any>;
+    }, req: any): Promise<{
+        pollId: string;
+        optionId: string;
+        userId: string;
+        organizationId: string;
+        createdAt: string;
+        id: string;
+    }>;
 }

@@ -5,90 +5,97 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SuperadminService = void 0;
 const common_1 = require("@nestjs/common");
-const prisma_service_1 = require("../prisma/prisma.service");
+const firebase_1 = require("../config/firebase");
 let SuperadminService = class SuperadminService {
-    prisma;
-    constructor(prisma) {
-        this.prisma = prisma;
-    }
     async getDashboardStats(organizationId) {
-        const today = new Array(0);
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
-        const [totalUsers, votedToday, monthVotes, latestPoll] = await Promise.all([
-            this.prisma.user.count({ where: { organizationId } }),
-            this.prisma.vote.count({
-                where: {
-                    organizationId,
-                    createdAt: { gte: startOfDay },
-                },
-            }),
-            this.prisma.vote.count({
-                where: {
-                    organizationId,
-                    createdAt: { gte: startOfMonth },
-                },
-            }),
-            this.prisma.poll.findFirst({
-                where: { organizationId, isActive: true },
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    options: {
-                        include: {
-                            _count: {
-                                select: { votes: true },
-                            },
-                        },
-                    },
-                },
-            }),
-        ]);
-        return {
-            totalCustomers: totalUsers,
-            votedToday,
-            notVotedToday: totalUsers - votedToday,
-            monthMealsServed: monthVotes,
-            latestPoll: latestPoll ? {
-                id: latestPoll.id,
-                question: latestPoll.question,
-                scheduledAt: latestPoll.scheduledAt,
-                options: latestPoll.options.map(opt => ({
-                    text: opt.optionText,
-                    count: opt._count.votes,
-                    type: opt.type
-                }))
-            } : null
-        };
+        try {
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            const [totalUsersSnap, votedTodaySnap, monthVotesSnap, latestPollSnap] = await Promise.all([
+                firebase_1.db.collection('users').where('organizationId', '==', organizationId).get(),
+                firebase_1.db.collection('votes')
+                    .where('organizationId', '==', organizationId)
+                    .where('createdAt', '>=', startOfDay.toISOString())
+                    .get(),
+                firebase_1.db.collection('votes')
+                    .where('organizationId', '==', organizationId)
+                    .where('createdAt', '>=', startOfMonth.toISOString())
+                    .get(),
+                firebase_1.db.collection('polls')
+                    .where('organizationId', '==', organizationId)
+                    .where('isActive', '==', true)
+                    .orderBy('createdAt', 'desc')
+                    .limit(1)
+                    .get(),
+            ]);
+            const totalUsers = totalUsersSnap.size;
+            const votedToday = votedTodaySnap.size;
+            const monthVotes = monthVotesSnap.size;
+            const latestPollDoc = latestPollSnap.empty ? null : latestPollSnap.docs[0];
+            let latestPoll = null;
+            if (latestPollDoc) {
+                const pollData = latestPollDoc.data();
+                const optionsSnap = await latestPollDoc.ref.collection('options').get();
+                const options = [];
+                for (const optDoc of optionsSnap.docs) {
+                    const optData = optDoc.data();
+                    const optVotesSnap = await firebase_1.db.collection('votes')
+                        .where('optionId', '==', optDoc.id)
+                        .get();
+                    options.push({
+                        text: optData.optionText,
+                        count: optVotesSnap.size,
+                        type: optData.type
+                    });
+                }
+                latestPoll = {
+                    id: latestPollDoc.id,
+                    question: pollData.question,
+                    scheduledAt: pollData.scheduledAt,
+                    options
+                };
+            }
+            return {
+                totalCustomers: totalUsers,
+                votedToday,
+                notVotedToday: totalUsers - votedToday,
+                monthMealsServed: monthVotes,
+                latestPoll
+            };
+        }
+        catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            throw error;
+        }
     }
     async getOrganizationUsers(organizationId) {
-        return this.prisma.user.findMany({
-            where: { organizationId },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                status: true,
-                mobileNo: true,
-                department: true,
-                createdAt: true,
-            },
-            orderBy: { name: 'asc' },
+        const snapshot = await firebase_1.db.collection('users')
+            .where('organizationId', '==', organizationId)
+            .orderBy('name', 'asc')
+            .get();
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                email: data.email,
+                role: data.role,
+                status: data.status,
+                mobileNo: data.mobileNo,
+                department: data.department,
+                createdAt: data.createdAt,
+            };
         });
     }
 };
 exports.SuperadminService = SuperadminService;
 exports.SuperadminService = SuperadminService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    (0, common_1.Injectable)()
 ], SuperadminService);
 //# sourceMappingURL=superadmin.service.js.map

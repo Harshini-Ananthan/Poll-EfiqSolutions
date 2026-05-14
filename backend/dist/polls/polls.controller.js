@@ -16,14 +16,14 @@ exports.PollsController = void 0;
 const common_1 = require("@nestjs/common");
 const polls_service_1 = require("./polls.service");
 const create_poll_dto_1 = require("./dto/create-poll.dto");
-const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const firebase_auth_guard_1 = require("../auth/guards/firebase-auth.guard");
 let PollsController = class PollsController {
     pollsService;
     constructor(pollsService) {
         this.pollsService = pollsService;
     }
     create(createPollDto, req) {
-        return this.pollsService.create(createPollDto, req.user.userId, req.user.organizationId);
+        return this.pollsService.create(createPollDto, req.user.id, req.user.organizationId);
     }
     findAll(req) {
         return this.pollsService.findAll(req.user.organizationId);
@@ -67,7 +67,7 @@ __decorate([
 ], PollsController.prototype, "remove", null);
 exports.PollsController = PollsController = __decorate([
     (0, common_1.Controller)('polls'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(firebase_auth_guard_1.FirebaseAuthGuard),
     __metadata("design:paramtypes", [polls_service_1.PollsService])
 ], PollsController);
 //# sourceMappingURL=polls.controller.js.map

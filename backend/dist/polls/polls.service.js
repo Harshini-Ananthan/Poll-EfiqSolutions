@@ -5,92 +5,75 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PollsService = void 0;
 const common_1 = require("@nestjs/common");
-const prisma_service_1 = require("../prisma/prisma.service");
+const firebase_1 = require("../config/firebase");
 let PollsService = class PollsService {
-    prisma;
-    constructor(prisma) {
-        this.prisma = prisma;
-    }
     async create(createPollDto, creatorId, organizationId) {
         const { options, ...pollData } = createPollDto;
-        return this.prisma.poll.create({
-            data: {
-                ...pollData,
-                creator: { connect: { id: creatorId } },
-                organization: { connect: { id: organizationId } },
-                options: {
-                    create: options.map((opt) => ({
-                        optionText: opt.optionText,
-                        type: opt.type,
-                    })),
-                },
-            },
-            include: {
-                options: true,
-            },
+        const pollRef = firebase_1.db.collection('polls').doc();
+        const pollId = pollRef.id;
+        const poll = {
+            ...pollData,
+            isActive: pollData.isActive ?? true,
+            scheduledAt: pollData.scheduledAt ?? new Date().toISOString(),
+            creatorId,
+            organizationId,
+            createdAt: new Date().toISOString(),
+        };
+        await pollRef.set(poll);
+        const optionsBatch = firebase_1.db.batch();
+        options.forEach((opt) => {
+            const optRef = pollRef.collection('options').doc();
+            optionsBatch.set(optRef, {
+                ...opt,
+                pollId,
+                organizationId
+            });
         });
+        await optionsBatch.commit();
+        return { id: pollId, ...poll, options };
     }
     async findAll(organizationId) {
-        return this.prisma.poll.findMany({
-            where: { organizationId },
-            include: {
-                _count: {
-                    select: { votes: true },
-                },
-                options: {
-                    include: {
-                        _count: {
-                            select: { votes: true },
-                        },
-                    },
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+        const snapshot = await firebase_1.db.collection('polls')
+            .where('organizationId', '==', organizationId)
+            .orderBy('createdAt', 'desc')
+            .get();
+        const polls = [];
+        for (const doc of snapshot.docs) {
+            const poll = { id: doc.id, ...doc.data() };
+            const optionsSnapshot = await doc.ref.collection('options').get();
+            poll.options = optionsSnapshot.docs.map(oDoc => ({ id: oDoc.id, ...oDoc.data() }));
+            const votesSnapshot = await firebase_1.db.collection('votes')
+                .where('pollId', '==', doc.id)
+                .where('organizationId', '==', organizationId)
+                .get();
+            poll._count = { votes: votesSnapshot.size };
+            polls.push(poll);
+        }
+        return polls;
     }
     async findOne(id) {
-        const poll = await this.prisma.poll.findUnique({
-            where: { id },
-            include: {
-                options: {
-                    include: {
-                        _count: {
-                            select: { votes: true },
-                        },
-                    },
-                },
-                votes: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-        if (!poll) {
+        const doc = await firebase_1.db.collection('polls').doc(id).get();
+        if (!doc.exists) {
             throw new common_1.NotFoundException(`Poll with ID ${id} not found`);
         }
+        const poll = { id: doc.id, ...doc.data() };
+        const optionsSnapshot = await doc.ref.collection('options').get();
+        poll.options = optionsSnapshot.docs.map(oDoc => ({ id: oDoc.id, ...oDoc.data() }));
+        const votesSnapshot = await firebase_1.db.collection('votes')
+            .where('pollId', '==', id)
+            .get();
+        poll.votes = votesSnapshot.docs.map(vDoc => ({ id: vDoc.id, ...vDoc.data() }));
         return poll;
     }
     async remove(id) {
-        return this.prisma.poll.delete({
-            where: { id },
-        });
+        return firebase_1.db.collection('polls').doc(id).delete();
     }
 };
 exports.PollsService = PollsService;
 exports.PollsService = PollsService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    (0, common_1.Injectable)()
 ], PollsService);
 //# sourceMappingURL=polls.service.js.map

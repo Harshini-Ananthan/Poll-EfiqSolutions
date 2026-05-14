@@ -45,17 +45,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
-const prisma_service_1 = require("../prisma/prisma.service");
+const firebase_1 = require("../config/firebase");
 const bcrypt = __importStar(require("bcrypt"));
 let AuthService = class AuthService {
-    prisma;
     jwtService;
-    constructor(prisma, jwtService) {
-        this.prisma = prisma;
+    constructor(jwtService) {
         this.jwtService = jwtService;
     }
     async validateUser(email, pass) {
-        const user = await this.prisma.user.findUnique({ where: { email } });
+        const usersRef = firebase_1.db.collection('users');
+        const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+        if (snapshot.empty)
+            return null;
+        const userDoc = snapshot.docs[0];
+        const user = { id: userDoc.id, ...userDoc.data() };
         if (user && await bcrypt.compare(pass, user.passwordHash)) {
             const { passwordHash, ...result } = user;
             return result;
@@ -81,23 +84,26 @@ let AuthService = class AuthService {
         };
     }
     async changePassword(userId, currentPass, newPass) {
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
-        if (!user)
+        const userDoc = await firebase_1.db.collection('users').doc(userId).get();
+        if (!userDoc.exists)
             throw new common_1.UnauthorizedException('User not found');
+        const user = userDoc.data();
         const isValid = await bcrypt.compare(currentPass, user.passwordHash);
         if (!isValid)
             throw new common_1.UnauthorizedException('Current password incorrect');
         const hashedPassword = await bcrypt.hash(newPass, 10);
-        return this.prisma.user.update({
-            where: { id: userId },
-            data: { passwordHash: hashedPassword },
-        });
+        await firebase_1.db.collection('users').doc(userId).update({ passwordHash: hashedPassword });
+        try {
+            await firebase_1.auth.updateUser(userId, { password: newPass });
+        }
+        catch (e) {
+        }
+        return { message: 'Password updated successfully' };
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        jwt_1.JwtService])
+    __metadata("design:paramtypes", [jwt_1.JwtService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

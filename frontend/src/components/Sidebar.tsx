@@ -2,11 +2,24 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { User, LogOut } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("token");
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard" },
@@ -64,7 +77,10 @@ export default function Sidebar() {
               <span className="text-xs text-gray-400 leading-tight mt-0.5 truncate">+9198657462</span>
             </div>
           </div>
-          <button className="text-gray-400 hover:text-white transition-colors flex-shrink-0">
+          <button 
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
+          >
             <LogOut size={20} />
           </button>
         </div>

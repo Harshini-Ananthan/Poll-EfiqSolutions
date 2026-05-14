@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SuperadminController = void 0;
 const common_1 = require("@nestjs/common");
 const superadmin_service_1 = require("./superadmin.service");
-const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const firebase_auth_guard_1 = require("../auth/guards/firebase-auth.guard");
 let SuperadminController = class SuperadminController {
     superadminService;
     constructor(superadminService) {
@@ -45,7 +45,7 @@ __decorate([
 ], SuperadminController.prototype, "getUsers", null);
 exports.SuperadminController = SuperadminController = __decorate([
     (0, common_1.Controller)('superadmin'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(firebase_auth_guard_1.FirebaseAuthGuard),
     __metadata("design:paramtypes", [superadmin_service_1.SuperadminService])
 ], SuperadminController);
 //# sourceMappingURL=superadmin.controller.js.map

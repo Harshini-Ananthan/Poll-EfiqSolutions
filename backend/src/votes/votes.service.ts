@@ -1,29 +1,29 @@
 import { Injectable, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { db } from '../config/firebase';
 
 @Injectable()
 export class VotesService {
-  constructor(private prisma: PrismaService) {}
-
   async create(pollId: string, optionId: string, userId: string, organizationId: string) {
-    // Check if already voted (Prisma will also throw error due to unique constraint, but we handle it explicitly)
-    const existingVote = await this.prisma.vote.findUnique({
-      where: {
-        pollId_userId: { pollId, userId },
-      },
-    });
+    const votesRef = db.collection('votes');
+    const existingVote = await votesRef
+      .where('pollId', '==', pollId)
+      .where('userId', '==', userId)
+      .limit(1)
+      .get();
 
-    if (existingVote) {
+    if (!existingVote.empty) {
       throw new ConflictException('You have already voted on this poll');
     }
 
-    return this.prisma.vote.create({
-      data: {
-        poll: { connect: { id: pollId } },
-        option: { connect: { id: optionId } },
-        user: { connect: { id: userId } },
-        organization: { connect: { id: organizationId } },
-      },
-    });
+    const voteData = {
+      pollId,
+      optionId,
+      userId,
+      organizationId,
+      createdAt: new Date().toISOString(),
+    };
+
+    const docRef = await votesRef.add(voteData);
+    return { id: docRef.id, ...voteData };
   }
 }

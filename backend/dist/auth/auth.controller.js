@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
-const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
+const firebase_auth_guard_1 = require("./guards/firebase-auth.guard");
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
@@ -29,7 +29,7 @@ let AuthController = class AuthController {
         return this.authService.login(user);
     }
     async changePassword(req, body) {
-        return this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+        return this.authService.changePassword(req.user.id, body.currentPassword, body.newPassword);
     }
 };
 exports.AuthController = AuthController;
@@ -42,7 +42,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(firebase_auth_guard_1.FirebaseAuthGuard),
     (0, common_1.Patch)('change-password'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),

@@ -1,22 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { db } from '../config/firebase';
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private prisma: PrismaService) {}
-
   async getProfile(id: string) {
-    const org = await this.prisma.organization.findUnique({
-      where: { id },
-    });
-    if (!org) throw new NotFoundException('Organization not found');
-    return org;
+    const doc = await db.collection('organizations').doc(id).get();
+    if (!doc.exists) throw new NotFoundException('Organization not found');
+    return { id: doc.id, ...(doc.data() as any) };
   }
 
   async updateProfile(id: string, data: any) {
-    return this.prisma.organization.update({
-      where: { id },
-      data,
-    });
+    await db.collection('organizations').doc(id).update(data);
+    return this.getProfile(id);
   }
 }

@@ -1,17 +1,23 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
+import { db, auth } from '../config/firebase';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+    
+    if (snapshot.empty) return null;
+    
+    const userDoc = snapshot.docs[0];
+    const user = { id: userDoc.id, ...userDoc.data() } as any;
+    
     if (user && await bcrypt.compare(pass, user.passwordHash)) {
       const { passwordHash, ...result } = user;
       return result;
@@ -39,16 +45,22 @@ export class AuthService {
   }
 
   async changePassword(userId: string, currentPass: string, newPass: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('User not found');
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) throw new UnauthorizedException('User not found');
     
+    const user = userDoc.data() as any;
     const isValid = await bcrypt.compare(currentPass, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Current password incorrect');
     
     const hashedPassword = await bcrypt.hash(newPass, 10);
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: hashedPassword },
-    });
+    await db.collection('users').doc(userId).update({ passwordHash: hashedPassword });
+    
+    try {
+      await auth.updateUser(userId, { password: newPass });
+    } catch (e) {
+      // Ignore if user doesn't exist in Firebase Auth yet
+    }
+    
+    return { message: 'Password updated successfully' };
   }
 }

@@ -15,14 +15,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VotesController = void 0;
 const common_1 = require("@nestjs/common");
 const votes_service_1 = require("./votes.service");
-const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const firebase_auth_guard_1 = require("../auth/guards/firebase-auth.guard");
 let VotesController = class VotesController {
     votesService;
     constructor(votesService) {
         this.votesService = votesService;
     }
     async create(body, req) {
-        return this.votesService.create(body.pollId, body.optionId, req.user.userId, req.user.organizationId);
+        return this.votesService.create(body.pollId, body.optionId, req.user.id, req.user.organizationId);
     }
 };
 exports.VotesController = VotesController;
@@ -36,7 +36,7 @@ __decorate([
 ], VotesController.prototype, "create", null);
 exports.VotesController = VotesController = __decorate([
     (0, common_1.Controller)('votes'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(firebase_auth_guard_1.FirebaseAuthGuard),
     __metadata("design:paramtypes", [votes_service_1.VotesService])
 ], VotesController);
 //# sourceMappingURL=votes.controller.js.map

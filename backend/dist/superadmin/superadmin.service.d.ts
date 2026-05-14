@@ -1,18 +1,28 @@
-import { PrismaService } from '../prisma/prisma.service';
 export declare class SuperadminService {
-    private prisma;
-    constructor(prisma: PrismaService);
     getDashboardStats(organizationId: string): Promise<{
-        totalCustomers: any;
-        votedToday: any;
+        totalCustomers: number;
+        votedToday: number;
         notVotedToday: number;
-        monthMealsServed: any;
+        monthMealsServed: number;
         latestPoll: {
-            id: any;
+            id: string;
             question: any;
             scheduledAt: any;
-            options: any;
+            options: {
+                text: any;
+                count: number;
+                type: any;
+            }[];
         } | null;
     }>;
-    getOrganizationUsers(organizationId: string): Promise<any>;
+    getOrganizationUsers(organizationId: string): Promise<{
+        id: string;
+        name: any;
+        email: any;
+        role: any;
+        status: any;
+        mobileNo: any;
+        department: any;
+        createdAt: any;
+    }[]>;
 }

@@ -36,3 +36,4 @@ Thumbs.db
 # Editor configurations
 .vscode/
 .idea/
+backend/firebase-service-account.json

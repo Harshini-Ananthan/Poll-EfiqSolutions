@@ -12,5 +12,7 @@ export declare class AuthController {
             organizationId: any;
         };
     }>;
-    changePassword(req: any, body: any): Promise<any>;
+    changePassword(req: any, body: any): Promise<{
+        message: string;
+    }>;
 }

@@ -1,10 +1,22 @@
-import { PrismaService } from '../prisma/prisma.service';
 import { CreatePollDto } from './dto/create-poll.dto';
 export declare class PollsService {
-    private prisma;
-    constructor(prisma: PrismaService);
-    create(createPollDto: CreatePollDto, creatorId: string, organizationId: string): Promise<any>;
-    findAll(organizationId: string): Promise<any>;
+    create(createPollDto: CreatePollDto, creatorId: string, organizationId: string): Promise<{
+        options: {
+            optionText: string;
+            type?: string;
+        }[];
+        isActive: boolean;
+        scheduledAt: string;
+        creatorId: string;
+        organizationId: string;
+        createdAt: string;
+        question: string;
+        sendPushNotification?: boolean;
+        allowVoteEdit?: boolean;
+        sendReminder?: boolean;
+        id: string;
+    }>;
+    findAll(organizationId: string): Promise<any[]>;
     findOne(id: string): Promise<any>;
-    remove(id: string): Promise<any>;
+    remove(id: string): Promise<FirebaseFirestore.WriteResult>;
 }

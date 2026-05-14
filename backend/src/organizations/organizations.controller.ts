@@ -1,9 +1,9 @@
 import { Controller, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 
 @Controller('organizations')
-@UseGuards(JwtAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 

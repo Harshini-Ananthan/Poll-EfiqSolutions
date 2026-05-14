@@ -1,9 +1,9 @@
 import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import { SuperadminService } from './superadmin.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 
 @Controller('superadmin')
-@UseGuards(JwtAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class SuperadminController {
   constructor(private readonly superadminService: SuperadminService) {}
 

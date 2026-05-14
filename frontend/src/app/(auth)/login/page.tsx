@@ -1,7 +1,10 @@
+"use client";
+
 import React, { useState } from "react";
-import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,10 +19,12 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const data = await api.post("/auth/login", { email, password });
-      localStorage.setItem("token", data.access_token);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem("token", token);
       router.push("/dashboard");
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message || "Invalid credentials");
     } finally {
       setLoading(false);

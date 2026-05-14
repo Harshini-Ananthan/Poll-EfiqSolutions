@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrganizationsController = void 0;
 const common_1 = require("@nestjs/common");
 const organizations_service_1 = require("./organizations.service");
-const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const firebase_auth_guard_1 = require("../auth/guards/firebase-auth.guard");
 let OrganizationsController = class OrganizationsController {
     organizationsService;
     constructor(organizationsService) {
@@ -46,7 +46,7 @@ __decorate([
 ], OrganizationsController.prototype, "updateProfile", null);
 exports.OrganizationsController = OrganizationsController = __decorate([
     (0, common_1.Controller)('organizations'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(firebase_auth_guard_1.FirebaseAuthGuard),
     __metadata("design:paramtypes", [organizations_service_1.OrganizationsService])
 ], OrganizationsController);
 //# sourceMappingURL=organizations.controller.js.map

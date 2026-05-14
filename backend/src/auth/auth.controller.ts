@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, UseGuards, Patch, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -16,11 +16,11 @@ export class AuthController {
     return this.authService.login(user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(FirebaseAuthGuard)
   @Patch('change-password')
   async changePassword(@Request() req: any, @Body() body: any) {
     return this.authService.changePassword(
-      req.user.userId,
+      req.user.id,
       body.currentPassword,
       body.newPassword,
     );

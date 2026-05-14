@@ -33,5 +33,9 @@ export class CreatePollDto {
 
   @IsOptional()
   @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   sendReminder?: boolean;
 }
