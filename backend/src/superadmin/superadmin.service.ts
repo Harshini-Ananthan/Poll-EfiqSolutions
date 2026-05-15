@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class SuperadminService {
@@ -101,10 +102,9 @@ export class SuperadminService {
     try {
       const snapshot = await db.collection('users')
         .where('organizationId', '==', organizationId)
-        .orderBy('name', 'asc')
         .get();
-
-      return snapshot.docs.map(doc => {
+      
+      const users = snapshot.docs.map(doc => {
         const data = doc.data() as any;
         return {
           id: doc.id,
@@ -117,9 +117,96 @@ export class SuperadminService {
           createdAt: data.createdAt,
         };
       });
+
+      // Sort in memory to avoid index requirements
+      return users.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     } catch (e) {
       console.error('Failed to fetch organization users:', e.message);
       return [];
+    }
+  }
+  async createUser(organizationId: string, userData: any) {
+    try {
+      const { name, email, password, mobileNo, countryCode, department, role } = userData;
+      
+      // Hash password
+      const passwordHash = await bcrypt.hash(password || 'Temporary123!', 10);
+      
+      const newUser: any = {
+        name,
+        email: email || '', // Optional email
+        passwordHash,
+        organizationId,
+        role: role || 'employee',
+        status: 'Active',
+        mobileNo: mobileNo || '',
+        countryCode: countryCode || '+91',
+        department: department || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      const docRef = await db.collection('users').add(newUser);
+      
+      // Also create in Firebase Auth if email is provided
+      if (email) {
+        try {
+          await auth.createUser({
+            uid: docRef.id,
+            email,
+            password: password || 'Temporary123!',
+            displayName: name,
+          });
+        } catch (authError) {
+          console.error('Firebase Auth creation failed:', authError.message);
+        }
+      }
+
+      return { id: docRef.id, ...newUser };
+    } catch (e) {
+      console.error('Failed to create user:', e.message);
+      throw e;
+    }
+  }
+
+  async updateUser(organizationId: string, userId: string, userData: any) {
+    try {
+      const { name, email, mobileNo, countryCode, department, role, status } = userData;
+      
+      const updateData: any = {
+        name,
+        email: email || '',
+        mobileNo: mobileNo || '',
+        countryCode: countryCode || '+91',
+        department: department || '',
+        role: role || 'employee',
+        status: status || 'Active',
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Verify ownership before update
+      const userRef = db.collection('users').doc(userId);
+      const doc = await userRef.get();
+      const existingData = doc.data();
+      
+      if (!doc.exists || !existingData || existingData.organizationId !== organizationId) {
+        throw new Error('User not found or unauthorized');
+      }
+
+      await userRef.update(updateData);
+      
+      // Update in Firebase Auth if email changed or exists
+      if (email && email !== existingData.email) {
+        try {
+          await auth.updateUser(userId, { email, displayName: name });
+        } catch (authError) {
+          console.error('Firebase Auth update failed:', authError.message);
+        }
+      }
+
+      return { id: userId, ...existingData, ...updateData };
+    } catch (e) {
+      console.error('Failed to update user:', e.message);
+      throw e;
     }
   }
 }
