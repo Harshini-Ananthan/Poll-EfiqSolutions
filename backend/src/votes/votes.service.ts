@@ -1,9 +1,20 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { db } from '../config/firebase';
 
 @Injectable()
 export class VotesService {
   async create(pollId: string, optionId: string, userId: string, organizationId: string) {
+    const pollDoc = await db.collection('polls').doc(pollId).get();
+    if (!pollDoc.exists) throw new NotFoundException('Poll not found');
+    if ((pollDoc.data() as any)?.organizationId !== organizationId) {
+      throw new ForbiddenException('Invalid organization access');
+    }
+
+    const optionDoc = await db.collection('polls').doc(pollId).collection('options').doc(optionId).get();
+    if (!optionDoc.exists || (optionDoc.data() as any)?.organizationId !== organizationId) {
+      throw new NotFoundException('Poll option not found');
+    }
+
     const votesRef = db.collection('votes');
     const existingVote = await votesRef
       .where('pollId', '==', pollId)

@@ -2,6 +2,7 @@ export const mockUser = {
   name: 'Arun Kumar',
   phone: '+9198657462',
   initials: 'AK',
+  isEnabled: true,
 };
 
 export const mockPoll = {

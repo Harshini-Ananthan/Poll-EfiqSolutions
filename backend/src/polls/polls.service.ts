@@ -59,9 +59,9 @@ export class PollsService {
     return polls;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId: string) {
     const doc = await db.collection('polls').doc(id).get();
-    if (!doc.exists) {
+    if (!doc.exists || (doc.data() as any)?.organizationId !== organizationId) {
       throw new NotFoundException(`Poll with ID ${id} not found`);
     }
 
@@ -78,7 +78,8 @@ export class PollsService {
     return poll;
   }
 
-  async remove(id: string) {
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
     return db.collection('polls').doc(id).delete();
   }
 }

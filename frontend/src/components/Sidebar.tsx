@@ -1,27 +1,57 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { User, LogOut } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
+import { clearSession, getStoredUser } from "@/lib/auth";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      localStorage.removeItem("token");
+      clearSession();
       router.push("/login");
     } catch (error) {
       console.error("Logout failed", error);
     }
   };
 
-  const navItems = [
+  if (!mounted) {
+    return (
+      <aside className="w-[260px] flex-shrink-0 bg-[#1e1e1e] flex flex-col justify-between border-r border-[#333333] h-full overflow-y-auto">
+        <div>
+          {/* Logo Section */}
+          <div className="h-24 flex items-center border-b border-[#333333]/50">
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col">
+                <img
+                  src="/logo.png"
+                  alt="Efiq One Logo"
+                  className="w-44 h-auto object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  const user = getStoredUser();
+  const navItems = user?.role === "SUPER_ADMIN" ? [
+    { name: "Super Admin", href: "/superadmin" },
+  ] : [
     { name: "Dashboard", href: "/dashboard" },
     { name: "New Poll", href: "/dashboard/new-poll" },
     { name: "Poll Data", href: "/dashboard/poll-data" },
@@ -73,8 +103,8 @@ export default function Sidebar() {
               <User size={18} className="text-gray-300" />
             </div>
             <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-semibold leading-tight truncate">Arun Kumar</span>
-              <span className="text-xs text-gray-400 leading-tight mt-0.5 truncate">+9198657462</span>
+              <span className="text-sm font-semibold leading-tight truncate">{user?.name || "Admin"}</span>
+              <span className="text-xs text-gray-400 leading-tight mt-0.5 truncate">{user?.role || "ADMIN"}</span>
             </div>
           </div>
           <button 

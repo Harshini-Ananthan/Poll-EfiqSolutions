@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -13,8 +14,8 @@ import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
       signOptions: { expiresIn: '1d' },
     }),
   ],
-  providers: [AuthService, FirebaseAuthGuard],
+  providers: [AuthService, FirebaseAuthGuard, RolesGuard],
   controllers: [AuthController],
-  exports: [AuthService, FirebaseAuthGuard],
+  exports: [AuthService, FirebaseAuthGuard, RolesGuard],
 })
 export class AuthModule {}

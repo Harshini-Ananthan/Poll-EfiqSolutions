@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, UseGuards, Patch, Request } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, UseGuards, Patch, Request, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 
@@ -14,6 +14,12 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.authService.login(user);
+  }
+
+  @UseGuards(FirebaseAuthGuard)
+  @Get('me')
+  async me(@Request() req: any) {
+    return this.authService.getCurrentUser(req.user.id);
   }
 
   @UseGuards(FirebaseAuthGuard)

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { db, auth } from '../config/firebase';
 import * as bcrypt from 'bcrypt';
@@ -19,6 +19,7 @@ export class AuthService {
     const user = { id: userDoc.id, ...userDoc.data() } as any;
     
     if (user && await bcrypt.compare(pass, user.passwordHash)) {
+      await this.assertAccountEnabled(user);
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -40,8 +41,20 @@ export class AuthService {
         email: user.email,
         role: user.role,
         organizationId: user.organizationId,
+        isEnabled: user.isEnabled !== false,
       }
     };
+  }
+
+  async getCurrentUser(userId: string) {
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) throw new UnauthorizedException('User not found');
+
+    const user = { id: userDoc.id, ...userDoc.data() } as any;
+    await this.assertAccountEnabled(user);
+
+    const { passwordHash, ...safeUser } = user;
+    return safeUser;
   }
 
   async changePassword(userId: string, currentPass: string, newPass: string) {
@@ -62,5 +75,23 @@ export class AuthService {
     }
     
     return { message: 'Password updated successfully' };
+  }
+
+  private async assertAccountEnabled(user: any) {
+    if (user.isEnabled === false) {
+      throw new ForbiddenException('ACCOUNT_DISABLED');
+    }
+
+    if (user.role !== 'SUPER_ADMIN' && user.organizationId) {
+      let organizationDoc = await db.collection('organizations').doc(user.organizationId).get();
+      if (!organizationDoc.exists) {
+        const organizationSnap = await db.collection('organizations').where('organizationId', '==', user.organizationId).limit(1).get();
+        organizationDoc = organizationSnap.empty ? organizationDoc : organizationSnap.docs[0];
+      }
+      const organization = organizationDoc.data() as any;
+      if (!organizationDoc.exists || organization?.isEnabled === false) {
+        throw new ForbiddenException('ACCOUNT_DISABLED');
+      }
+    }
   }
 }

@@ -1,15 +1,11 @@
 "use client";
 
 import React, { useEffect } from "react";
-import Sidebar from "@/components/Sidebar";
 import { useRouter } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
 import { refreshCurrentUser } from "@/lib/auth";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SuperadminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -22,19 +18,10 @@ export default function DashboardLayout({
 
       try {
         const user = await refreshCurrentUser();
-        if (user.role === "SUPER_ADMIN") {
-          router.push("/superadmin");
-          return;
-        }
-        if (user.role !== "ADMIN") {
-          router.push("/unauthorized");
-        }
+        if (user.role !== "SUPER_ADMIN") router.push("/unauthorized");
       } catch (error: any) {
-        if (error.message === "ACCOUNT_DISABLED") {
-          router.push("/account-disabled");
-          return;
-        }
-        router.push("/login");
+        if (error.message === "ACCOUNT_DISABLED") router.push("/account-disabled");
+        else router.push("/login");
       }
     }
 
@@ -44,9 +31,7 @@ export default function DashboardLayout({
   return (
     <div className="flex bg-[#242424] text-white font-manrope selection:bg-blue-500/30 overflow-hidden h-screen">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-10 scrollbar-hide">
-        {children}
-      </main>
+      <main className="flex-1 overflow-y-auto p-10 scrollbar-hide">{children}</main>
     </div>
   );
 }

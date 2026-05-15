@@ -19,12 +19,12 @@ export class PollsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pollsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.pollsService.findOne(id, req.user.organizationId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.pollsService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.pollsService.remove(id, req.user.organizationId);
   }
 }

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 const MOCK_ENABLED = false; // Set to true to bypass backend issues
 
 // Log the actual URL being used to the console for debugging
@@ -24,11 +24,16 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
     });
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      if (response.status === 403 && errorData.message === "ACCOUNT_DISABLED") {
+        if (typeof window !== "undefined") window.location.href = "/account-disabled";
+        throw new Error("ACCOUNT_DISABLED");
+      }
       if (response.status === 401) {
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
         if (typeof window !== "undefined") window.location.href = "/login";
       }
-      const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `API Error: ${response.status}`);
     }
 

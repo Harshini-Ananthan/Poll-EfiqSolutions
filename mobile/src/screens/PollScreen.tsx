@@ -15,6 +15,7 @@ import PollCard from '../components/PollCard';
 import ProfileDropdown from '../components/ProfileDropdown';
 import AppLogo from '../components/AppLogo';
 import { mockUser, mockPoll } from '../data/mockData';
+import DisabledAccountScreen from './DisabledAccountScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Poll'>;
 
@@ -29,6 +30,10 @@ const getGreeting = (): string => {
 export default function PollScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  if (mockUser.isEnabled === false) {
+    return <DisabledAccountScreen />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
