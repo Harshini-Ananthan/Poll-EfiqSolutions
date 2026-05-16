@@ -146,8 +146,28 @@ export default function DashboardPage() {
             <div>Comment</div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center text-gray-500 italic text-sm py-20">
-             No votes recorded yet for today's session
+          <div className="flex-1 overflow-y-auto max-h-[500px] custom-scrollbar">
+            {stats.todayVotes && stats.todayVotes.length > 0 ? (
+              stats.todayVotes.map((vote: any, index: number) => (
+                <div key={vote.id} className="grid grid-cols-[50px_1.5fr_1fr_1fr_1fr_1fr_1.5fr] gap-4 py-4 border-b border-[#333]/30 text-sm items-center hover:bg-white/5 transition-colors">
+                  <div className="text-gray-500 font-mono">{index + 1}</div>
+                  <div className="font-bold text-white">{vote.name}</div>
+                  <div>
+                    <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-wider border border-green-500/20">
+                      {vote.status}
+                    </span>
+                  </div>
+                  <div className="text-gray-300 font-medium">{vote.option}</div>
+                  <div className="text-gray-400">{vote.location}</div>
+                  <div className="text-gray-400 font-mono">{vote.votedTime}</div>
+                  <div className="text-gray-500 text-xs italic truncate">{vote.comment}</div>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-center text-gray-500 italic text-sm py-20">
+                 No votes recorded yet for today's session
+              </div>
+            )}
           </div>
 
           {/* View All */}
@@ -159,6 +179,22 @@ export default function DashboardPage() {
           
         </div>
       </section>
+      {/* Custom Scrollbar Styling */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #2a2a2a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #444;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+      `}</style>
     </>
   );
 }

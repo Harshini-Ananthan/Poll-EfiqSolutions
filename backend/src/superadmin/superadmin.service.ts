@@ -53,12 +53,41 @@ export class SuperadminService {
     const votedToday = votedTodaySnap?.size || 0;
     const totalCustomers = totalUsersSnap.size;
 
+    const todayVotes = [];
+    if (votedTodaySnap) {
+      for (const vDoc of votedTodaySnap.docs) {
+        const vData = vDoc.data() as any;
+        const user = totalUsersSnap.docs.find(u => u.id === vData.userId)?.data() as any;
+        
+        let optionText = 'Unknown';
+        try {
+          const pollOptionDoc = await db.collection('polls').doc(vData.pollId).collection('options').doc(vData.optionId).get();
+          if (pollOptionDoc.exists) {
+            optionText = (pollOptionDoc.data() as any).optionText || (pollOptionDoc.data() as any).label;
+          }
+        } catch (e) {
+          console.error(`Failed to fetch option text for vote ${vDoc.id}`, e);
+        }
+
+        todayVotes.push({
+          id: vDoc.id,
+          name: user?.name || 'Unknown',
+          status: 'Voted',
+          option: optionText,
+          location: user?.branch || 'General',
+          votedTime: new Date(vData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          comment: vData.comment || '-',
+        });
+      }
+    }
+
     return {
       totalCustomers,
       votedToday,
       notVotedToday: Math.max(0, totalCustomers - votedToday),
       monthMealsServed: monthVotesSnap?.size || 0,
       latestPoll,
+      todayVotes,
     };
   }
 

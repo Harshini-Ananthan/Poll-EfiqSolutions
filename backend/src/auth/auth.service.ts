@@ -29,14 +29,14 @@ export class AuthService {
 
   async validateMobileUser(phoneNumber: string): Promise<any> {
     const usersRef = db.collection('users');
-    const snapshot = await usersRef.where('phoneNumber', '==', phoneNumber).limit(1).get();
+    const snapshot = await usersRef.where('mobileNo', '==', phoneNumber).limit(1).get();
     
     if (snapshot.empty) return null;
     
     const userDoc = snapshot.docs[0];
     const user = { id: userDoc.id, ...userDoc.data() } as any;
     
-    if (user.role !== 'USER') {
+    if (user.role !== 'USER' && user.role !== 'employee') {
       throw new UnauthorizedException('Only mobile users can login');
     }
 

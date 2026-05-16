@@ -46,7 +46,14 @@ export class PollsService {
       const poll = { id: doc.id, ...(doc.data() as any) } as any;
       
       const optionsSnapshot = await doc.ref.collection('options').get();
-      poll.options = optionsSnapshot.docs.map(oDoc => ({ id: oDoc.id, ...(oDoc.data() as any) }));
+      poll.options = optionsSnapshot.docs.map(oDoc => {
+        const oData = oDoc.data() as any;
+        return { 
+          id: oDoc.id, 
+          ...oData,
+          label: oData.optionText || oData.label // Fallback if label already exists
+        };
+      });
       
       const votesSnapshot = await db.collection('votes')
         .where('pollId', '==', doc.id)
@@ -68,7 +75,14 @@ export class PollsService {
     const poll = { id: doc.id, ...(doc.data() as any) } as any;
     
     const optionsSnapshot = await doc.ref.collection('options').get();
-    poll.options = optionsSnapshot.docs.map(oDoc => ({ id: oDoc.id, ...(oDoc.data() as any) }));
+    poll.options = optionsSnapshot.docs.map(oDoc => {
+      const oData = oDoc.data() as any;
+      return { 
+        id: oDoc.id, 
+        ...oData,
+        label: oData.optionText || oData.label 
+      };
+    });
 
     const votesSnapshot = await db.collection('votes')
       .where('pollId', '==', id)
