@@ -15,8 +15,41 @@ import {
 import { RootStackParamList } from './src/types/navigation';
 import PollScreen from './src/screens/PollScreen';
 import SummaryScreen from './src/screens/SummaryScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function AppNavigator() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FBF7F2' }}>
+        <ActivityIndicator size="large" color="#F97316" />
+      </View>
+    );
+  }
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#FBF7F2' },
+      }}
+    >
+      {user ? (
+        <>
+          <Stack.Screen name="Poll" component={PollScreen} />
+          <Stack.Screen name="Summary" component={SummaryScreen} />
+        </>
+      ) : (
+        <Stack.Screen name="Login" component={LoginScreen} />
+      )}
+    </Stack.Navigator>
+  );
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -29,14 +62,7 @@ export default function App() {
 
   if (!fontsLoaded) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#FBF7F2',
-        }}
-      >
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FBF7F2' }}>
         <ActivityIndicator size="large" color="#F97316" />
       </View>
     );
@@ -44,19 +70,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Poll"
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-            contentStyle: { backgroundColor: '#FBF7F2' },
-          }}
-        >
-          <Stack.Screen name="Poll" component={PollScreen} />
-          <Stack.Screen name="Summary" component={SummaryScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <AuthProvider>
+        <NavigationContainer>
+          <AppNavigator />
+        </NavigationContainer>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

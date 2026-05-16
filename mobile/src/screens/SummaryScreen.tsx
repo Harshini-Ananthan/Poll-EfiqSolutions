@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,7 +14,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import ProfileDropdown from '../components/ProfileDropdown';
 import AppLogo from '../components/AppLogo';
-import { mockUser, mockSummaryThisMonth, mockSummaryLastMonth } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { VotesService } from '../services/votes.service';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Summary'>;
 
@@ -24,6 +26,7 @@ interface SummaryItem {
   date: string;
   meal: string;
   type: 'Veg' | 'Non-veg';
+  rawDate: Date;
 }
 
 const getGreeting = (): string => {
@@ -36,13 +39,52 @@ const getGreeting = (): string => {
 
 export default function SummaryScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user, logout } = useAuth();
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('this');
+  
+  const [votes, setVotes] = useState<SummaryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const data: SummaryItem[] =
-    activeTab === 'this'
-      ? (mockSummaryThisMonth as SummaryItem[])
-      : (mockSummaryLastMonth as SummaryItem[]);
+  useEffect(() => {
+    fetchVotes();
+  }, []);
+
+  const fetchVotes = async () => {
+    try {
+      const data = await VotesService.getMyVotes();
+      const formatted = data.map((v: any) => ({
+        id: v.id,
+        date: new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        meal: v.meal,
+        type: v.type,
+        rawDate: new Date(v.createdAt)
+      }));
+      setVotes(formatted);
+    } catch (error) {
+      console.error('Failed to fetch votes', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!user) return null;
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const thisMonthVotes = votes.filter(v => 
+    v.rawDate.getMonth() === currentMonth && v.rawDate.getFullYear() === currentYear
+  );
+
+  const lastMonthVotes = votes.filter(v => {
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    return v.rawDate.getMonth() === prevMonth && v.rawDate.getFullYear() === prevYear;
+  });
+
+  const dataToDisplay = activeTab === 'this' ? thisMonthVotes : lastMonthVotes;
 
   const renderItem = ({ item }: { item: SummaryItem }) => (
     <View style={styles.row}>
@@ -90,14 +132,14 @@ export default function SummaryScreen() {
             onPress={() => setDropdownVisible(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.avatarText}>{mockUser.initials}</Text>
+            <Text style={styles.avatarText}>{user.initials}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Greeting ── */}
         <View style={styles.greetingWrap}>
           <Text style={styles.greetingLine}>{getGreeting()},</Text>
-          <Text style={styles.userName}>{mockUser.name}</Text>
+          <Text style={styles.userName}>{user.name}</Text>
         </View>
 
         {/* ── Title ── */}
@@ -130,25 +172,29 @@ export default function SummaryScreen() {
                 activeTab === 'last' && styles.tabTextActive,
               ]}
             >
-              Last Month
+              LAST MONTH
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* ── List ── */}
-        <FlatList
-          data={data}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No responses yet</Text>
-            </View>
-          }
-        />
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={dataToDisplay}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No responses yet</Text>
+              </View>
+            }
+          />
+        )}
       </View>
 
       {/* ── Profile Dropdown ── */}
@@ -157,11 +203,11 @@ export default function SummaryScreen() {
         onClose={() => setDropdownVisible(false)}
         onSummary={() => setDropdownVisible(false)}
         onSettings={() => setDropdownVisible(false)}
-        onLogout={() => {
+        onLogout={async () => {
           setDropdownVisible(false);
-          navigation.navigate('Poll');
+          await logout();
         }}
-        user={mockUser}
+        user={{ ...user, phone: user.phoneNumber }}
       />
     </SafeAreaView>
   );
@@ -268,6 +314,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#A89A8E',
     letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   tabTextActive: {
     color: '#1A1209',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +16,9 @@ import { RootStackParamList } from '../types/navigation';
 import PollCard from '../components/PollCard';
 import ProfileDropdown from '../components/ProfileDropdown';
 import AppLogo from '../components/AppLogo';
-import { mockUser, mockPoll } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { PollsService } from '../services/polls.service';
+import { VotesService } from '../services/votes.service';
 import DisabledAccountScreen from './DisabledAccountScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Poll'>;
@@ -27,13 +31,61 @@ const getGreeting = (): string => {
   return 'Good night';
 };
 
+const formatDate = (isoString: string) => {
+  if (!isoString) return 'TODAY';
+  const date = new Date(isoString);
+  return `TODAY · ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}`;
+};
+
+const formatTime = (isoString: string) => {
+  if (!isoString) return 'N/A';
+  const date = new Date(isoString);
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function PollScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user, logout } = useAuth();
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [polls, setPolls] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
-  if (mockUser.isEnabled === false) {
+  useEffect(() => {
+    fetchPolls();
+  }, []);
+
+  const fetchPolls = async () => {
+    try {
+      const data = await PollsService.getMobilePolls();
+      setPolls(data);
+    } catch (error) {
+      console.error('Failed to fetch polls', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVote = async (pollId: string, optionId: string) => {
+    setSubmittingId(pollId);
+    try {
+      await VotesService.submitVote(pollId, optionId);
+      Alert.alert('Success', 'Your vote has been submitted.');
+      fetchPolls();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to submit vote');
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  if (!user) return null;
+
+  if (user.isEnabled === false) {
     return <DisabledAccountScreen />;
   }
+
+  const activePoll = polls.find(p => p.isActive);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -62,23 +114,34 @@ export default function PollScreen() {
             onPress={() => setDropdownVisible(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.avatarText}>{mockUser.initials}</Text>
+            <Text style={styles.avatarText}>{user.initials}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Greeting ── */}
         <View style={styles.greetingWrap}>
           <Text style={styles.greetingLine}>{getGreeting()},</Text>
-          <Text style={styles.userName}>{mockUser.name}</Text>
+          <Text style={styles.userName}>{user.name}</Text>
         </View>
 
         {/* ── Poll Card ── */}
-        <PollCard
-          date={mockPoll.date}
-          question={mockPoll.question}
-          options={mockPoll.options}
-          cutoffTime={mockPoll.cutoffTime}
-        />
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 40 }} />
+        ) : activePoll ? (
+          <View style={{ opacity: submittingId === activePoll.id ? 0.6 : 1 }}>
+            <PollCard
+              date={formatDate(activePoll.scheduledAt)}
+              question={activePoll.question}
+              options={activePoll.options}
+              cutoffTime={formatTime(activePoll.scheduledAt)}
+              onSubmit={(optionId) => handleVote(activePoll.id, optionId)}
+            />
+          </View>
+        ) : (
+          <View style={{ marginTop: 40, alignItems: 'center' }}>
+            <Text style={{ fontFamily: 'Manrope_500Medium', color: '#8A7E74' }}>No active polls available right now.</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* ── Profile Dropdown ── */}
@@ -90,8 +153,11 @@ export default function PollScreen() {
           navigation.navigate('Summary');
         }}
         onSettings={() => setDropdownVisible(false)}
-        onLogout={() => setDropdownVisible(false)}
-        user={mockUser}
+        onLogout={async () => {
+          setDropdownVisible(false);
+          await logout();
+        }}
+        user={{ ...user, phone: user.phoneNumber }}
       />
     </SafeAreaView>
   );

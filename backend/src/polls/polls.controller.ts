@@ -8,6 +8,7 @@ import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 export class PollsController {
   constructor(private readonly pollsService: PollsService) {}
 
+
   @Post()
   create(@Body() createPollDto: CreatePollDto, @Request() req: any) {
     return this.pollsService.create(createPollDto, req.user.id, req.user.organizationId);
@@ -15,6 +16,11 @@ export class PollsController {
 
   @Get()
   findAll(@Request() req: any) {
+    return this.pollsService.findAll(req.user.organizationId);
+  }
+
+  @Get('mobile')
+  findMobileAll(@Request() req: any) {
     return this.pollsService.findAll(req.user.organizationId);
   }
 

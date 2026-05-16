@@ -37,4 +37,33 @@ export class VotesService {
     const docRef = await votesRef.add(voteData);
     return { id: docRef.id, ...voteData };
   }
+
+  async findUserVotes(userId: string, organizationId: string) {
+    const snapshot = await db.collection('votes')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .orderBy('createdAt', 'desc')
+      .get();
+      
+    const votes = [];
+    for (const doc of snapshot.docs) {
+      const vote = doc.data() as any;
+      const pollDoc = await db.collection('polls').doc(vote.pollId).get();
+      const optionDoc = await db.collection('polls').doc(vote.pollId).collection('options').doc(vote.optionId).get();
+      
+      if (pollDoc.exists && optionDoc.exists) {
+        const optionData = optionDoc.data() as any;
+        votes.push({
+          id: doc.id,
+          createdAt: vote.createdAt,
+          pollId: vote.pollId,
+          question: (pollDoc.data() as any).question,
+          optionId: vote.optionId,
+          meal: optionData.label,
+          type: optionData.label.toLowerCase().includes('non-veg') ? 'Non-veg' : 'Veg',
+        });
+      }
+    }
+    return votes;
+  }
 }

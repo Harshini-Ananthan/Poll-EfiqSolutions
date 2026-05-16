@@ -16,6 +16,19 @@ export class AuthController {
     return this.authService.login(user);
   }
 
+  @Post('mobile-login')
+  @HttpCode(HttpStatus.OK)
+  async mobileLogin(@Body() body: { phoneNumber: string }) {
+    if (!body.phoneNumber) {
+      throw new UnauthorizedException('Phone number is required');
+    }
+    const user = await this.authService.validateMobileUser(body.phoneNumber);
+    if (!user) {
+      throw new UnauthorizedException('User not found. Please contact your organization admin.');
+    }
+    return this.authService.login(user);
+  }
+
   @UseGuards(FirebaseAuthGuard)
   @Get('me')
   async me(@Request() req: any) {

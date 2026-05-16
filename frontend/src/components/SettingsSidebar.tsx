@@ -20,23 +20,23 @@ export default function SettingsSidebar() {
     {
       title: "GENERAL",
       items: [
-        { name: "Company profile", href: "/settings/company-profile", icon: Monitor },
+        { name: "Company profile", href: "/dashboard/settings/company-profile", icon: Monitor },
       ],
     },
     {
       title: "USERS",
       items: [
-        { name: "Notifications", href: "/settings/notifications", icon: Bell },
-        { name: "Appearance", href: "/settings/appearance", icon: Sun },
-        { name: "User management", href: "/settings/users", icon: Users },
+        { name: "Notifications", href: "/dashboard/settings/notifications", icon: Bell },
+        { name: "Appearance", href: "/dashboard/settings/appearance", icon: Sun },
+        { name: "User management", href: "/dashboard/settings/user-management", icon: Users },
       ],
     },
     {
       title: "ACCOUNT",
       items: [
-        { name: "Security", href: "/settings/security", icon: Shield },
-        { name: "Billing & plan", href: "/settings/billing", icon: CreditCard },
-        { name: "Danger zone", href: "/settings/danger", icon: TriangleAlert, danger: true },
+        { name: "Security", href: "/dashboard/settings/security", icon: Shield },
+        { name: "Billing & plan", href: "/dashboard/settings/billing", icon: CreditCard },
+        { name: "Danger zone", href: "/dashboard/settings/danger-zone", icon: TriangleAlert, danger: true },
       ],
     },
   ];

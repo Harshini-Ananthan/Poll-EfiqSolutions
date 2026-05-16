@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { db, auth } from '../config/firebase';
 import * as bcrypt from 'bcrypt';
 
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -26,6 +27,24 @@ export class AuthService {
     return null;
   }
 
+  async validateMobileUser(phoneNumber: string): Promise<any> {
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.where('phoneNumber', '==', phoneNumber).limit(1).get();
+    
+    if (snapshot.empty) return null;
+    
+    const userDoc = snapshot.docs[0];
+    const user = { id: userDoc.id, ...userDoc.data() } as any;
+    
+    if (user.role !== 'USER') {
+      throw new UnauthorizedException('Only mobile users can login');
+    }
+
+    await this.assertAccountEnabled(user);
+    const { passwordHash, ...result } = user;
+    return result;
+  }
+
   async login(user: any) {
     const payload = { 
       email: user.email, 
@@ -39,6 +58,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        phoneNumber: user.phoneNumber,
         role: user.role,
         organizationId: user.organizationId,
         isEnabled: user.isEnabled !== false,

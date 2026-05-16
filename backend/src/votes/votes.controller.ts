@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
 import { VotesService } from './votes.service';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 
@@ -10,5 +10,10 @@ export class VotesController {
   @Post()
   async create(@Body() body: { pollId: string; optionId: string }, @Request() req: any) {
     return this.votesService.create(body.pollId, body.optionId, req.user.id, req.user.organizationId);
+  }
+
+  @Get('me')
+  async getMyVotes(@Request() req: any) {
+    return this.votesService.findUserVotes(req.user.id, req.user.organizationId);
   }
 }

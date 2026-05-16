@@ -39,10 +39,14 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    if (loading) return;
     setLoading(true);
     setError("");
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
       localStorage.setItem("token", token);
@@ -51,6 +55,10 @@ export default function LoginPage() {
       storeUser(user);
       router.push(routeForUser(user));
     } catch (err: any) {
+      if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+        // User closed the popup or it was cancelled, not a real error
+        return;
+      }
       console.error("Google Login error:", err);
       if (err.message === "ACCOUNT_DISABLED") {
         clearSession();
@@ -130,7 +138,8 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="mt-6 w-full bg-[#242424] hover:bg-[#333] border border-[#444] text-gray-200 font-semibold py-3 flex items-center justify-center gap-3 rounded-lg transition-colors"
+          disabled={loading}
+          className="mt-6 w-full bg-[#242424] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed border border-[#444] text-gray-200 font-semibold py-3 flex items-center justify-center gap-3 rounded-lg transition-colors"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
