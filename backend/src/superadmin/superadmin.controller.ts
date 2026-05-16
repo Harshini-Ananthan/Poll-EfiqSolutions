@@ -77,8 +77,12 @@ export class SuperadminController {
   }
 
   @Get('users')
-  async getUsers(@Request() req: any) {
-    return this.superadminService.getOrganizationUsers(req.user.organizationId);
+  async getUsers(
+    @Request() req: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.superadminService.getOrganizationUsers(req.user.organizationId, startDate, endDate);
   }
 
   @Post('users')

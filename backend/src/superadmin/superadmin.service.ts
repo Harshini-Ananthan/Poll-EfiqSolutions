@@ -323,9 +323,39 @@ export class SuperadminService {
     };
   }
 
-  async getOrganizationUsers(organizationId: string) {
-    const snapshot = await db.collection('users').where('organizationId', '==', organizationId).get();
-    return snapshot.docs.map((doc) => this.sanitizeUser(doc.id, doc.data() as any));
+  async getOrganizationUsers(organizationId: string, startDate?: string, endDate?: string) {
+    let votesQuery = db.collection('votes').where('organizationId', '==', organizationId);
+
+    if (startDate) {
+      votesQuery = votesQuery.where('createdAt', '>=', new Date(startDate).toISOString());
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      votesQuery = votesQuery.where('createdAt', '<=', end.toISOString());
+    }
+
+    const [usersSnap, votesSnap] = await Promise.all([
+      db.collection('users').where('organizationId', '==', organizationId).get(),
+      votesQuery.get(),
+    ]);
+
+    const voteCounts = new Map<string, number>();
+    votesSnap.docs.forEach((doc) => {
+      const data = doc.data();
+      const userId = data.userId;
+      if (userId) {
+        voteCounts.set(userId, (voteCounts.get(userId) || 0) + 1);
+      }
+    });
+
+    return usersSnap.docs.map((doc) => {
+      const user = this.sanitizeUser(doc.id, doc.data() as any);
+      return {
+        ...user,
+        votes: voteCounts.get(doc.id) || 0,
+      };
+    });
   }
 
   async createUser(organizationId: string, userData: any) {
