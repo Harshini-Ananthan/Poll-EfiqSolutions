@@ -85,7 +85,7 @@ export default function PollScreen() {
     return <DisabledAccountScreen />;
   }
 
-  const activePoll = polls.find(p => p.isActive);
+  const activePolls = polls.filter(p => p.isActive);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -127,16 +127,18 @@ export default function PollScreen() {
         {/* ── Poll Card ── */}
         {isLoading ? (
           <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 40 }} />
-        ) : activePoll ? (
-          <View style={{ opacity: submittingId === activePoll.id ? 0.6 : 1 }}>
-            <PollCard
-              date={formatDate(activePoll.scheduledAt)}
-              question={activePoll.question}
-              options={activePoll.options}
-              cutoffTime={formatTime(activePoll.scheduledAt)}
-              onSubmit={(optionId) => handleVote(activePoll.id, optionId)}
-            />
-          </View>
+        ) : activePolls.length > 0 ? (
+          activePolls.map((poll) => (
+            <View key={poll.id} style={{ opacity: submittingId === poll.id ? 0.6 : 1, marginBottom: 20 }}>
+              <PollCard
+                date={formatDate(poll.scheduledAt)}
+                question={poll.question}
+                options={poll.options}
+                cutoffTime={formatTime(poll.scheduledAt)}
+                onSubmit={(optionId) => handleVote(poll.id, optionId)}
+              />
+            </View>
+          ))
         ) : (
           <View style={{ marginTop: 40, alignItems: 'center' }}>
             <Text style={{ fontFamily: 'Manrope_500Medium', color: '#8A7E74' }}>No active polls available right now.</Text>

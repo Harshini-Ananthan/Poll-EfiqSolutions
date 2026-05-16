@@ -36,7 +36,7 @@ export default function Sidebar() {
             <div className="flex items-center gap-2">
               <div className="flex flex-col">
                 <img
-                  src="/logo.png"
+                  src="/logo-white.png"
                   alt="Efiq One Logo"
                   className="w-44 h-auto object-contain"
                 />
@@ -67,7 +67,7 @@ export default function Sidebar() {
           <div className="flex items-center gap-2">
             <div className="flex flex-col">
               <img
-                src="/logo.png"
+                src="/logo-white.png"
                 alt="Efiq One Logo"
                 className="w-44 h-auto object-contain"
               />

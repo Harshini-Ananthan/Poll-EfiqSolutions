@@ -9,6 +9,7 @@ export default function NewPollPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [question, setQuestion] = useState("");
+  const [cutoffTime, setCutoffTime] = useState("");
   const [options, setOptions] = useState([
     { text: "Veg meals", type: "Veg" },
     { text: "Non-veg meals", type: "Non-veg" },
@@ -25,6 +26,14 @@ export default function NewPollPage() {
       return;
     }
 
+    let finalCutoffTime = undefined;
+    if (cutoffTime) {
+      const now = new Date();
+      const [hours, minutes] = cutoffTime.split(':');
+      now.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      finalCutoffTime = now.toISOString();
+    }
+
     setLoading(true);
     try {
       await api.post("/polls", {
@@ -33,6 +42,7 @@ export default function NewPollPage() {
         sendPushNotification: settings.pushNotification,
         allowVoteEdit: settings.voteEditing,
         sendReminder: settings.sendReminder,
+        cutoffTime: finalCutoffTime,
       });
       router.push("/dashboard");
     } catch (err) {
@@ -67,15 +77,27 @@ export default function NewPollPage() {
         
         {/* FORM SECTION */}
         <section className="space-y-8">
-          <div>
-            <label className="block text-gray-400 text-sm font-medium mb-3 uppercase tracking-wider">Poll Question</label>
-            <input 
-              type="text" 
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ex: Today lunch menu" 
-              className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-6 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-400 text-sm font-medium mb-3 uppercase tracking-wider">Poll Question</label>
+              <input 
+                type="text" 
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Ex: Today lunch menu" 
+                className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-6 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm font-medium mb-3 uppercase tracking-wider">Cutoff Time (Today)</label>
+              <input 
+                type="time" 
+                value={cutoffTime}
+                onChange={(e) => setCutoffTime(e.target.value)}
+                className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                style={{ colorScheme: 'dark' }}
+              />
+            </div>
           </div>
 
           <div>

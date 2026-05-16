@@ -24,6 +24,10 @@ export class CreatePollDto {
   scheduledAt?: string;
 
   @IsOptional()
+  @IsDateString()
+  cutoffTime?: string;
+
+  @IsOptional()
   @IsBoolean()
   sendPushNotification?: boolean;
 

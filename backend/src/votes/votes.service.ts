@@ -6,8 +6,13 @@ export class VotesService {
   async create(pollId: string, optionId: string, userId: string, organizationId: string) {
     const pollDoc = await db.collection('polls').doc(pollId).get();
     if (!pollDoc.exists) throw new NotFoundException('Poll not found');
-    if ((pollDoc.data() as any)?.organizationId !== organizationId) {
+    const pollData = pollDoc.data() as any;
+    if (pollData?.organizationId !== organizationId) {
       throw new ForbiddenException('Invalid organization access');
+    }
+
+    if (pollData.cutoffTime && pollData.cutoffTime < new Date().toISOString()) {
+      throw new ConflictException('This poll is no longer active');
     }
 
     const optionDoc = await db.collection('polls').doc(pollId).collection('options').doc(optionId).get();
@@ -23,7 +28,16 @@ export class VotesService {
       .get();
 
     if (!existingVote.empty) {
-      throw new ConflictException('You have already voted on this poll');
+      if (!pollData.allowVoteEdit) {
+        throw new ConflictException('You have already voted on this poll. Editing is not allowed.');
+      } else {
+        const voteId = existingVote.docs[0].id;
+        await votesRef.doc(voteId).update({
+          optionId,
+          updatedAt: new Date().toISOString(),
+        });
+        return { id: voteId, pollId, optionId, userId, organizationId, updatedAt: new Date().toISOString() };
+      }
     }
 
     const voteData = {

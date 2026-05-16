@@ -1,54 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 
 export default function AppLogo() {
   return (
-    <View style={styles.row}>
-      {/* Green leaf icon */}
-      <View style={styles.iconWrap}>
-        <Text style={styles.icon}>🌿</Text>
-      </View>
-      {/* Text part */}
-      <View style={styles.textWrap}>
-        <Text style={styles.efg}>efg</Text>
-        <Text style={styles.one}>one</Text>
-      </View>
+    <View style={styles.container}>
+      <Image
+        source={require('../../assets/logo.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
+  container: {
+    alignItems: 'flex-start',
     justifyContent: 'center',
+    // The image itself has internal padding, so we use negative margins to align it properly with other header items
+    marginLeft: -15,
+    marginTop: -15,
+    marginBottom: -15,
   },
-  icon: {
-    fontSize: 18,
-  },
-  textWrap: {
-    flexDirection: 'column',
-  },
-  efg: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 13,
-    color: '#2D2D2D',
-    lineHeight: 14,
-    letterSpacing: 0.5,
-  },
-  one: {
-    fontFamily: 'Manrope_400Regular',
-    fontSize: 11,
-    color: '#8A8A8A',
-    lineHeight: 13,
-    letterSpacing: 0.5,
+  logo: {
+    width: 200,
+    height: 120,
   },
 });

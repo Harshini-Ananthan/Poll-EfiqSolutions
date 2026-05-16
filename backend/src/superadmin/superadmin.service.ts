@@ -14,7 +14,7 @@ export class SuperadminService {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const [totalUsersSnap, votedTodaySnap, monthVotesSnap, latestPollSnap] = await Promise.all([
+    const [totalUsersSnap, votedTodaySnap, monthVotesSnap, activePollsSnap] = await Promise.all([
       db.collection('users').where('organizationId', '==', organizationId).get(),
       db.collection('votes').where('organizationId', '==', organizationId).where('createdAt', '>=', startOfDay.toISOString()).get().catch(() => null),
       db.collection('votes').where('organizationId', '==', organizationId).where('createdAt', '>=', startOfMonth.toISOString()).get().catch(() => null),
@@ -22,32 +22,37 @@ export class SuperadminService {
         .where('organizationId', '==', organizationId)
         .where('isActive', '==', true)
         .orderBy('createdAt', 'desc')
-        .limit(1)
         .get()
         .catch(() => null),
     ]);
 
-    let latestPoll: any = null;
-    if (latestPollSnap && !latestPollSnap.empty) {
-      const latestPollDoc = latestPollSnap.docs[0];
-      const pollData = latestPollDoc.data() as any;
-      const optionsSnap = await latestPollDoc.ref.collection('options').get();
-      const options = await Promise.all(optionsSnap.docs.map(async (optDoc) => {
-        const optData = optDoc.data() as any;
-        const optVotesSnap = await db.collection('votes').where('optionId', '==', optDoc.id).get();
-        return {
-          text: optData.optionText,
-          count: optVotesSnap.size,
-          type: optData.type,
-        };
-      }));
-
-      latestPoll = {
-        id: latestPollDoc.id,
-        question: pollData.question,
-        scheduledAt: pollData.scheduledAt,
-        options,
-      };
+    const now = new Date().toISOString();
+    const activePolls = [];
+    if (activePollsSnap && !activePollsSnap.empty) {
+      for (const pollDoc of activePollsSnap.docs) {
+        const pollData = pollDoc.data() as any;
+        if (pollData.isActive && pollData.cutoffTime && pollData.cutoffTime < now) {
+          db.collection('polls').doc(pollDoc.id).update({ isActive: false }).catch(() => null);
+          continue;
+        }
+        const optionsSnap = await pollDoc.ref.collection('options').get();
+        const options = await Promise.all(optionsSnap.docs.map(async (optDoc) => {
+          const optData = optDoc.data() as any;
+          const optVotesSnap = await db.collection('votes').where('optionId', '==', optDoc.id).get();
+          return {
+            text: optData.optionText,
+            count: optVotesSnap.size,
+            type: optData.type,
+          };
+        }));
+        
+        activePolls.push({
+          id: pollDoc.id,
+          question: pollData.question,
+          scheduledAt: pollData.scheduledAt,
+          options,
+        });
+      }
     }
 
     const votedToday = votedTodaySnap?.size || 0;
@@ -71,6 +76,7 @@ export class SuperadminService {
 
         todayVotes.push({
           id: vDoc.id,
+          pollId: vData.pollId,
           name: user?.name || 'Unknown',
           status: 'Voted',
           option: optionText,
@@ -86,7 +92,7 @@ export class SuperadminService {
       votedToday,
       notVotedToday: Math.max(0, totalCustomers - votedToday),
       monthMealsServed: monthVotesSnap?.size || 0,
-      latestPoll,
+      activePolls,
       todayVotes,
     };
   }

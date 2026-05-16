@@ -14,6 +14,8 @@ export class PollsService {
       ...pollData,
       isActive: pollData.isActive ?? true,
       scheduledAt: pollData.scheduledAt ?? new Date().toISOString(),
+      cutoffTime: pollData.cutoffTime ?? null,
+      allowVoteEdit: pollData.allowVoteEdit ?? false,
       creatorId,
       organizationId,
       createdAt: new Date().toISOString(),
@@ -41,9 +43,15 @@ export class PollsService {
       .orderBy('createdAt', 'desc')
       .get();
 
+    const now = new Date().toISOString();
     const polls = [];
     for (const doc of snapshot.docs) {
-      const poll = { id: doc.id, ...(doc.data() as any) } as any;
+      const data = doc.data() as any;
+      if (data.isActive && data.cutoffTime && data.cutoffTime < now) {
+        db.collection('polls').doc(doc.id).update({ isActive: false }).catch(() => null);
+        data.isActive = false;
+      }
+      const poll = { id: doc.id, ...data } as any;
       
       const optionsSnapshot = await doc.ref.collection('options').get();
       poll.options = optionsSnapshot.docs.map(oDoc => {
