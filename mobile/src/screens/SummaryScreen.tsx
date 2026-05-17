@@ -25,7 +25,8 @@ interface SummaryItem {
   id: string;
   date: string;
   meal: string;
-  type: 'Veg' | 'Non-veg';
+  question: string;
+  type: string;
   rawDate: Date;
 }
 
@@ -57,6 +58,7 @@ export default function SummaryScreen() {
         id: v.id,
         date: new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         meal: v.meal,
+        question: v.question,
         type: v.type,
         rawDate: new Date(v.createdAt)
       }));
@@ -89,17 +91,20 @@ export default function SummaryScreen() {
   const renderItem = ({ item }: { item: SummaryItem }) => (
     <View style={styles.row}>
       <Text style={styles.rowDate}>{item.date}</Text>
-      <Text style={styles.rowMeal}>{item.meal}</Text>
+      <View style={styles.rowContent}>
+        <Text style={styles.rowQuestion}>{item.question || 'Unknown Poll'}</Text>
+        <Text style={styles.rowMeal}>Selected: {item.meal}</Text>
+      </View>
       <View
         style={[
           styles.badge,
-          item.type === 'Veg' ? styles.vegBadge : styles.nonVegBadge,
+          item.type === 'Veg' ? styles.vegBadge : item.type === 'Non-veg' ? styles.nonVegBadge : styles.otherBadge,
         ]}
       >
         <Text
           style={[
             styles.badgeText,
-            item.type === 'Veg' ? styles.vegText : styles.nonVegText,
+            item.type === 'Veg' ? styles.vegText : item.type === 'Non-veg' ? styles.nonVegText : styles.otherText,
           ]}
         >
           {item.type}
@@ -342,11 +347,21 @@ const styles = StyleSheet.create({
     color: '#A89A8E',
     width: 52,
   },
-  rowMeal: {
+  rowContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingRight: 8,
+  },
+  rowQuestion: {
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 14,
     color: '#1A1209',
-    flex: 1,
+    marginBottom: 4,
+  },
+  rowMeal: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 13,
+    color: '#8A7E74',
   },
   badge: {
     paddingHorizontal: 10,
@@ -368,6 +383,12 @@ const styles = StyleSheet.create({
   },
   nonVegText: {
     color: '#DC2626',
+  },
+  otherBadge: {
+    backgroundColor: '#E5E7EB', // Gray
+  },
+  otherText: {
+    color: '#4B5563', // Dark Gray
   },
 
   /* Empty */

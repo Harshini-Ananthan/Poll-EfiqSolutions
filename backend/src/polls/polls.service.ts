@@ -100,6 +100,12 @@ export class PollsService {
     return poll;
   }
 
+  async updateStatus(id: string, isActive: boolean, organizationId: string) {
+    await this.findOne(id, organizationId);
+    await db.collection('polls').doc(id).update({ isActive, updatedAt: new Date().toISOString() });
+    return { success: true };
+  }
+
   async remove(id: string, organizationId: string) {
     await this.findOne(id, organizationId);
     return db.collection('polls').doc(id).delete();

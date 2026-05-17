@@ -1,8 +1,8 @@
 import { api } from './api';
 
 export const VotesService = {
-  async submitVote(pollId: string, optionId: string) {
-    const response = await api.post('/votes', { pollId, optionId });
+  async submitVote(pollId: string, optionId: string, comment?: string) {
+    const response = await api.post('/votes', { pollId, optionId, comment });
     return response.data;
   },
   

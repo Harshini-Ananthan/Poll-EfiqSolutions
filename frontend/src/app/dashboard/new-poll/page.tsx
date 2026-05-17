@@ -20,6 +20,14 @@ export default function NewPollPage() {
     sendReminder: true,
   });
 
+  React.useEffect(() => {
+    const defaultTime = new Date();
+    defaultTime.setHours(defaultTime.getHours() + 2);
+    const hours = defaultTime.getHours().toString().padStart(2, '0');
+    const minutes = defaultTime.getMinutes().toString().padStart(2, '0');
+    setCutoffTime(`${hours}:${minutes}`);
+  }, []);
+
   const handleSubmit = async () => {
     if (!question || options.some(o => !o.text)) {
       alert("Please fill in all fields");

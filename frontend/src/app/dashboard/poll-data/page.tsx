@@ -62,6 +62,15 @@ export default function PollDataPage() {
     }
   };
 
+  const handleToggleStatus = async (poll: any) => {
+    try {
+      await api.patch(`/polls/${poll.id}/status`, { isActive: !poll.isActive });
+      setPolls(polls.map(p => p.id === poll.id ? { ...p, isActive: !p.isActive } : p));
+    } catch (error) {
+      console.error("Failed to toggle status", error);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <header className="flex items-center justify-between mb-10">
@@ -120,15 +129,29 @@ export default function PollDataPage() {
                     </p>
                   </td>
                   <td className="px-8 py-6">
-                    {poll.isActive ? (
-                      <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold uppercase tracking-wider">
-                        <Clock size={14} className="animate-pulse" /> Live
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => handleToggleStatus(poll)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                          poll.isActive ? 'bg-green-500' : 'bg-[#333]'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            poll.isActive ? 'translate-x-[18px]' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider ${
+                        poll.isActive ? "text-green-400" : "text-gray-500"
+                      }`}>
+                        {poll.isActive ? (
+                          <><Clock size={14} className="animate-pulse" /> Live</>
+                        ) : (
+                          <><CheckCircle2 size={14} /> Closed</>
+                        )}
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-gray-500 text-xs font-bold uppercase tracking-wider">
-                        <CheckCircle2 size={14} /> Closed
-                      </span>
-                    )}
+                    </div>
                   </td>
                   <td className="px-8 py-6">
                     <p className="text-sm font-medium text-gray-300">

@@ -48,6 +48,7 @@ export default function PollScreen() {
   const { user, logout } = useAuth();
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [polls, setPolls] = useState<any[]>([]);
+  const [votes, setVotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
@@ -57,19 +58,23 @@ export default function PollScreen() {
 
   const fetchPolls = async () => {
     try {
-      const data = await PollsService.getMobilePolls();
-      setPolls(data);
+      const [pollsData, votesData] = await Promise.all([
+        PollsService.getMobilePolls(),
+        VotesService.getMyVotes()
+      ]);
+      setPolls(pollsData);
+      setVotes(votesData);
     } catch (error) {
-      console.error('Failed to fetch polls', error);
+      console.error('Failed to fetch data', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVote = async (pollId: string, optionId: string) => {
+  const handleVote = async (pollId: string, optionId: string, comment?: string) => {
     setSubmittingId(pollId);
     try {
-      await VotesService.submitVote(pollId, optionId);
+      await VotesService.submitVote(pollId, optionId, comment);
       Alert.alert('Success', 'Your vote has been submitted.');
       fetchPolls();
     } catch (error: any) {
@@ -128,17 +133,23 @@ export default function PollScreen() {
         {isLoading ? (
           <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 40 }} />
         ) : activePolls.length > 0 ? (
-          activePolls.map((poll) => (
-            <View key={poll.id} style={{ opacity: submittingId === poll.id ? 0.6 : 1, marginBottom: 20 }}>
-              <PollCard
-                date={formatDate(poll.scheduledAt)}
-                question={poll.question}
-                options={poll.options}
-                cutoffTime={formatTime(poll.scheduledAt)}
-                onSubmit={(optionId) => handleVote(poll.id, optionId)}
-              />
-            </View>
-          ))
+          activePolls.map((poll) => {
+            const userVote = votes.find(v => v.pollId === poll.id);
+            return (
+              <View key={poll.id} style={{ opacity: submittingId === poll.id ? 0.6 : 1, marginBottom: 20 }}>
+                <PollCard
+                  date={formatDate(poll.scheduledAt)}
+                  question={poll.question}
+                  options={poll.options}
+                  cutoffTime={poll.cutoffTime ? formatTime(poll.cutoffTime) : formatTime(poll.scheduledAt)}
+                  initialSelectedId={userVote?.optionId}
+                  initialComment={userVote?.comment}
+                  allowVoteEdit={poll.allowVoteEdit}
+                  onSubmit={(optionId, comment) => handleVote(poll.id, optionId, comment)}
+                />
+              </View>
+            );
+          })
         ) : (
           <View style={{ marginTop: 40, alignItems: 'center' }}>
             <Text style={{ fontFamily: 'Manrope_500Medium', color: '#8A7E74' }}>No active polls available right now.</Text>

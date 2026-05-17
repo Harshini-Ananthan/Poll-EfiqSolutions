@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request, Patch } from '@nestjs/common';
 import { PollsService } from './polls.service';
 import { CreatePollDto } from './dto/create-poll.dto';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
@@ -27,6 +27,11 @@ export class PollsController {
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: any) {
     return this.pollsService.findOne(id, req.user.organizationId);
+  }
+
+  @Patch(':id/status')
+  updateStatus(@Param('id') id: string, @Body() body: { isActive: boolean }, @Request() req: any) {
+    return this.pollsService.updateStatus(id, body.isActive, req.user.organizationId);
   }
 
   @Delete(':id')

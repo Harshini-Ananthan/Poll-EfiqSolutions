@@ -8,8 +8,8 @@ export class VotesController {
   constructor(private readonly votesService: VotesService) {}
 
   @Post()
-  async create(@Body() body: { pollId: string; optionId: string }, @Request() req: any) {
-    return this.votesService.create(body.pollId, body.optionId, req.user.id, req.user.organizationId);
+  async create(@Body() body: { pollId: string; optionId: string; comment?: string }, @Request() req: any) {
+    return this.votesService.create(body.pollId, body.optionId, req.user.id, req.user.organizationId, body.comment);
   }
 
   @Get('me')
