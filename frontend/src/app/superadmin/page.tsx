@@ -147,8 +147,6 @@ export default function SuperadminPage() {
     { label: "Organizations", value: stats?.totalOrganizations || 0, icon: Building2 },
     { label: "Admins", value: stats?.totalAdmins || 0, icon: Shield },
     { label: "Users", value: stats?.totalUsers || 0, icon: Users },
-    { label: "Active Polls", value: stats?.activePolls || 0, icon: Vote },
-    { label: "Votes Today", value: stats?.totalVotesToday || 0, icon: Activity },
     { label: "Active Orgs", value: stats?.activeOrganizations || 0, icon: CheckCircle2 },
     { label: "Disabled Orgs", value: stats?.disabledOrganizations || 0, icon: LockKeyhole },
   ];
@@ -170,7 +168,7 @@ export default function SuperadminPage() {
 
       {error && <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
 
-      <section className="grid grid-cols-7 gap-5 mb-10 border-b border-[#333333] pb-8">
+      <section className="grid grid-cols-5 gap-5 mb-10 border-b border-[#333333] pb-8">
         {metricCards.map((item) => {
           const Icon = item.icon;
           return (
@@ -253,15 +251,13 @@ export default function SuperadminPage() {
       <section className="mb-10" id="organizations">
         <h2 className="font-orbitron text-xl font-bold mb-6">Organization Management</h2>
         <div className="bg-[#2a2a2a] rounded-xl border border-[#333333]/50 overflow-hidden">
-          <div className="grid grid-cols-[1.5fr_1.2fr_100px_100px_140px] gap-4 border-b border-[#333] px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#666]">
+          <div className="grid grid-cols-[1.5fr_1.2fr_140px] gap-4 border-b border-[#333] px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#666]">
             <div>Organization</div>
             <div>Admin</div>
-            <div>Polls</div>
-            <div>Votes</div>
             <div>Status</div>
           </div>
           {filteredOrganizations.map((organization) => (
-            <div key={organization.id} className="grid grid-cols-[1.5fr_1.2fr_100px_100px_140px] gap-4 items-center border-b border-[#333]/60 px-6 py-4 last:border-b-0">
+            <div key={organization.id} className="grid grid-cols-[1.5fr_1.2fr_140px] gap-4 items-center border-b border-[#333]/60 px-6 py-4 last:border-b-0">
               <div>
                 <p className="font-semibold">{organization.companyName}</p>
                 <p className="text-xs text-gray-500">{organization.organizationId}</p>
@@ -270,8 +266,6 @@ export default function SuperadminPage() {
                 <p className="text-sm truncate">{organization.admin?.name || "No admin"}</p>
                 <p className="text-xs text-gray-500 truncate">{organization.admin?.email || "-"}</p>
               </div>
-              <div className="font-orbitron">{organization.stats?.polls || 0}</div>
-              <div className="font-orbitron">{organization.stats?.votes || 0}</div>
               <div className="text-sm">
                 {organization.isEnabled ? "Enabled" : "Disabled"}
               </div>
@@ -282,9 +276,7 @@ export default function SuperadminPage() {
 
       <section id="activity">
         <h2 className="font-orbitron text-xl font-bold mb-6">Activity Monitoring</h2>
-        <div className="grid grid-cols-3 gap-6">
-          <ActivityColumn title="Recent Polls" items={activityData?.recentPollCreations} getText={(item) => item.question || item.id} />
-          <ActivityColumn title="Recent Votes" items={activityData?.recentVotes} getText={(item) => `${item.userId || "User"} voted on ${item.pollId || "poll"}`} />
+        <div className="grid grid-cols-1 gap-6">
           <ActivityColumn title="Organization Activity" items={activityData?.organizationActivity} getText={(item) => `${item.companyName || item.id} updated`} />
         </div>
       </section>
