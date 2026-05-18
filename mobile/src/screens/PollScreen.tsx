@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import PollCard from '../components/PollCard';
@@ -23,6 +25,8 @@ import DisabledAccountScreen from './DisabledAccountScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Poll'>;
 
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+
 const getGreeting = (): string => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -30,6 +34,11 @@ const getGreeting = (): string => {
   if (hour < 21) return 'Good evening';
   return 'Good night';
 };
+
+const formatHeaderDate = (): string =>
+  new Date().toLocaleDateString('en-US', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
 
 const formatDate = (isoString: string) => {
   if (!isoString) return 'TODAY';
@@ -43,24 +52,100 @@ const formatTime = (isoString: string) => {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 };
 
+function EmptyState({ brandColor }: { brandColor: string }) {
+  return (
+    <View style={emptyStyles.container}>
+      <View style={[emptyStyles.iconRing, { borderColor: brandColor + '40' }]}>
+        <Text style={emptyStyles.icon}>🗳️</Text>
+      </View>
+      <Text style={emptyStyles.title}>No polls today</Text>
+      <Text style={emptyStyles.subtitle}>
+        Your admin hasn't posted any active polls yet. Check back later.
+      </Text>
+    </View>
+  );
+}
+
+const emptyStyles = StyleSheet.create({
+  container: { alignItems: 'center', paddingTop: 56, paddingHorizontal: 32 },
+  iconRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    backgroundColor: '#fff',
+  },
+  icon: { fontSize: 36 },
+  title: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 18,
+    color: '#1A1209',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 14,
+    color: '#8A7E74',
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+});
+
 export default function PollScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, logout } = useAuth();
+  const { user, organization, logout, refreshOrganization, initialPollId, setInitialPollId } = useAuth();
+  const brandColor = organization?.brandColor ?? '#F97316';
+
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [polls, setPolls] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  // Maps pollId → Y offset from the top of the sheet content
+  const pollYPositions = useRef<Record<string, number>>({});
+  // Animated value for the highlight pulse on the targeted poll
+  const highlightAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => { fetchPolls(); }, []);
+
+  useFocusEffect(useCallback(() => { refreshOrganization(); }, [refreshOrganization]));
+
+  // Once polls are loaded and we have a pending pollId, scroll + highlight
   useEffect(() => {
-    fetchPolls();
-  }, []);
+    if (!isLoading && initialPollId && polls.length > 0) {
+      const yPos = pollYPositions.current[initialPollId];
+      if (yPos !== undefined) {
+        scrollToPoll(yPos);
+      } else {
+        // Delay slightly to let layouts settle then scroll
+        setTimeout(() => {
+          const y = pollYPositions.current[initialPollId];
+          if (y !== undefined) scrollToPoll(y);
+        }, 400);
+      }
+    }
+  }, [isLoading, initialPollId, polls]);
+
+  const scrollToPoll = (yOffset: number) => {
+    scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
+    // Pulse highlight animation: fade in → stay → fade out
+    Animated.sequence([
+      Animated.timing(highlightAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(highlightAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+    ]).start(() => setInitialPollId(null));
+  };
 
   const fetchPolls = async () => {
     try {
       const [pollsData, votesData] = await Promise.all([
         PollsService.getMobilePolls(),
-        VotesService.getMyVotes()
+        VotesService.getMyVotes(),
       ]);
       setPolls(pollsData);
       setVotes(votesData);
@@ -85,146 +170,145 @@ export default function PollScreen() {
   };
 
   if (!user) return null;
-
-  if (user.isEnabled === false) {
-    return <DisabledAccountScreen />;
-  }
+  if (user.isEnabled === false) return <DisabledAccountScreen />;
 
   const activePolls = polls.filter(p => p.isActive);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FBF7F2" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: brandColor }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={brandColor} />
 
-      {/* ── Top Orange Bar ── */}
-      <View style={styles.topBar}>
-        <View style={styles.topBarDots}>
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-        </View>
+      {/* ── Sticky top bar — always visible ── */}
+      <View style={styles.stickyBar}>
+        <AppLogo
+          logoBase64={organization?.logoBase64}
+          companyName={organization?.shortName || organization?.companyName}
+          brandColor={brandColor}
+          onDark
+        />
+        <TouchableOpacity
+          style={styles.avatarButton}
+          onPress={() => setDropdownVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.avatarText}>{user.initials}</Text>
+        </TouchableOpacity>
       </View>
 
+      {/* ── Scroll area ── */}
       <ScrollView
-        style={styles.scrollView}
+        ref={scrollViewRef}
+        style={[styles.scrollView, { backgroundColor: brandColor }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        decelerationRate="normal"
       >
-        {/* ── Header: Logo + Avatar ── */}
-        <View style={styles.header}>
-          <AppLogo />
-          <TouchableOpacity
-            id="profile-avatar"
-            style={styles.avatarButton}
-            onPress={() => setDropdownVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.avatarText}>{user.initials}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Greeting ── */}
-        <View style={styles.greetingWrap}>
+        {/* Greeting — scrolls away on scroll-up */}
+        <View style={styles.greetingSection}>
           <Text style={styles.greetingLine}>{getGreeting()},</Text>
           <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.dateText}>{formatHeaderDate()}</Text>
         </View>
 
-        {/* ── Poll Card ── */}
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 40 }} />
-        ) : activePolls.length > 0 ? (
-          activePolls.map((poll) => {
-            const userVote = votes.find(v => v.pollId === poll.id);
-            return (
-              <View key={poll.id} style={{ opacity: submittingId === poll.id ? 0.6 : 1, marginBottom: 20 }}>
-                <PollCard
-                  date={formatDate(poll.scheduledAt)}
-                  question={poll.question}
-                  options={poll.options}
-                  cutoffTime={poll.cutoffTime ? formatTime(poll.cutoffTime) : formatTime(poll.scheduledAt)}
-                  initialSelectedId={userVote?.optionId}
-                  initialComment={userVote?.comment}
-                  allowVoteEdit={poll.allowVoteEdit}
-                  onSubmit={(optionId, comment) => handleVote(poll.id, optionId, comment)}
-                />
+        {/* White content sheet */}
+        <View style={styles.sheet}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Active Polls</Text>
+            {!isLoading && activePolls.length > 0 && (
+              <View style={[styles.badge, { backgroundColor: brandColor + '18' }]}>
+                <Text style={[styles.badgeText, { color: brandColor }]}>{activePolls.length}</Text>
               </View>
-            );
-          })
-        ) : (
-          <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Manrope_500Medium', color: '#8A7E74' }}>No active polls available right now.</Text>
+            )}
           </View>
-        )}
+
+          {isLoading ? (
+            <ActivityIndicator size="large" color={brandColor} style={{ marginTop: 60 }} />
+          ) : activePolls.length > 0 ? (
+            activePolls.map((poll) => {
+              const userVote = votes.find(v => v.pollId === poll.id);
+              const isTarget = poll.id === initialPollId;
+              return (
+                <View
+                  key={poll.id}
+                  onLayout={(e) => {
+                    pollYPositions.current[poll.id] = e.nativeEvent.layout.y;
+                  }}
+                  style={{ opacity: submittingId === poll.id ? 0.55 : 1, marginBottom: 16 }}
+                >
+                  {isTarget ? (
+                    <Animated.View style={[
+                      styles.highlightRing,
+                      {
+                        borderColor: brandColor,
+                        opacity: highlightAnim,
+                        shadowColor: brandColor,
+                        transform: [{ scale: highlightAnim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) }],
+                      },
+                    ]}>
+                      <PollCard
+                        date={formatDate(poll.scheduledAt)}
+                        question={poll.question}
+                        options={poll.options}
+                        cutoffTime={poll.cutoffTime ? formatTime(poll.cutoffTime) : formatTime(poll.scheduledAt)}
+                        initialSelectedId={userVote?.optionId}
+                        initialComment={userVote?.comment}
+                        allowVoteEdit={poll.allowVoteEdit}
+                        onSubmit={(optionId, comment) => handleVote(poll.id, optionId, comment)}
+                        brandColor={brandColor}
+                      />
+                    </Animated.View>
+                  ) : (
+                    <PollCard
+                      date={formatDate(poll.scheduledAt)}
+                      question={poll.question}
+                      options={poll.options}
+                      cutoffTime={poll.cutoffTime ? formatTime(poll.cutoffTime) : formatTime(poll.scheduledAt)}
+                      initialSelectedId={userVote?.optionId}
+                      initialComment={userVote?.comment}
+                      allowVoteEdit={poll.allowVoteEdit}
+                      onSubmit={(optionId, comment) => handleVote(poll.id, optionId, comment)}
+                      brandColor={brandColor}
+                    />
+                  )}
+                </View>
+              );
+            })
+          ) : (
+            <EmptyState brandColor={brandColor} />
+          )}
+        </View>
       </ScrollView>
 
-      {/* ── Profile Dropdown ── */}
       <ProfileDropdown
         visible={dropdownVisible}
         onClose={() => setDropdownVisible(false)}
-        onSummary={() => {
-          setDropdownVisible(false);
-          navigation.navigate('Summary');
-        }}
+        onSummary={() => { setDropdownVisible(false); navigation.navigate('Summary'); }}
         onSettings={() => setDropdownVisible(false)}
-        onLogout={async () => {
-          setDropdownVisible(false);
-          await logout();
-        }}
+        onLogout={async () => { setDropdownVisible(false); await logout(); }}
         user={{ ...user, phone: user.phoneNumber }}
+        brandColor={brandColor}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F97316',
-  },
+  safeArea: { flex: 1 },
 
-  /* Orange top bar */
-  topBar: {
-    backgroundColor: '#F97316',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  topBarDots: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-  },
-
-  /* Scroll */
-  scrollView: {
-    flex: 1,
-    backgroundColor: '#FBF7F2',
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-
-  /* Header */
-  header: {
+  stickyBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   avatarButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F97316',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -234,20 +318,70 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  /* Greeting */
-  greetingWrap: {
-    marginBottom: 20,
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+
+  greetingSection: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 28,
+    gap: 4,
   },
   greetingLine: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 14,
-    color: '#8A7E74',
-    marginBottom: 2,
+    color: 'rgba(255,255,255,0.75)',
   },
   userName: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 26,
+    fontSize: 28,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  dateText: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
+    marginTop: 2,
+  },
+
+  sheet: {
+    backgroundColor: '#F5F0EB',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    minHeight: SCREEN_HEIGHT,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 48,
+  },
+
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 16,
     color: '#1A1209',
-    letterSpacing: -0.3,
+  },
+  badge: {
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
+  },
+
+  highlightRing: {
+    borderRadius: 22,
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

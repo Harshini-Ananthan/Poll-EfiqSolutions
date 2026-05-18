@@ -20,6 +20,7 @@ interface Props {
     phone: string;
     initials: string;
   };
+  brandColor?: string;
 }
 
 export default function ProfileDropdown({
@@ -29,6 +30,7 @@ export default function ProfileDropdown({
   onSettings,
   onLogout,
   user,
+  brandColor = '#F97316',
 }: Props) {
   return (
     <Modal
@@ -39,11 +41,11 @@ export default function ProfileDropdown({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.dropdown} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.dropdown, { borderColor: brandColor }]} onPress={(e) => e.stopPropagation()}>
           {/* User Info */}
           <View style={styles.userSection}>
             <View style={styles.avatarWrap}>
-              <View style={styles.avatar}>
+              <View style={[styles.avatar, { backgroundColor: brandColor }]}>
                 <Text style={styles.avatarText}>{user.initials}</Text>
               </View>
             </View>

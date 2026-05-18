@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Search, Clock, CheckCircle2, Eye, X, Download, Copy } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Clock, CheckCircle2, Eye, X, Download, Copy, Share2, Check, MessageCircle } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function PollDataPage() {
@@ -19,6 +19,24 @@ export default function PollDataPage() {
   const [selectedPoll, setSelectedPoll] = useState<any>(null);
   const [pollDetails, setPollDetails] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // Share State
+  const [sharePoll, setSharePoll] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
+
+  const getDeepLink = (pollId: string) => `pollapp://poll/${pollId}`;
+
+  const handleCopyLink = (pollId: string) => {
+    navigator.clipboard.writeText(getDeepLink(pollId));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsAppShare = (poll: any) => {
+    const link = getDeepLink(poll.id);
+    const message = `🗳️ *${poll.question}*\n\nPlease vote on today's poll. Open the EfiqOne app to cast your vote:\n${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  };
 
   useEffect(() => {
     async function getPolls() {
@@ -329,11 +347,21 @@ export default function PollDataPage() {
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Participation</p>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button 
-                      onClick={() => handleViewDetails(poll)}
-                      className="p-2 text-white hover:text-blue-500 transition-colors">
-                      <Eye size={20} />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => { setSharePoll(poll); setCopied(false); }}
+                        className="p-2 text-gray-400 hover:text-green-400 transition-colors"
+                        title="Share poll link"
+                      >
+                        <Share2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleViewDetails(poll)}
+                        className="p-2 text-white hover:text-blue-500 transition-colors"
+                      >
+                        <Eye size={20} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -364,6 +392,61 @@ export default function PollDataPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Share Poll Modal ── */}
+      {sharePoll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-[#333] flex justify-between items-center bg-[#222]">
+              <div>
+                <h2 className="text-lg font-bold text-white">Share Poll</h2>
+                <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{sharePoll.question}</p>
+              </div>
+              <button onClick={() => setSharePoll(null)} className="text-gray-400 hover:text-white transition-colors">
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Deep link display */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">App Deep Link</p>
+                <div className="flex items-center gap-2 bg-[#111] border border-[#333] rounded-xl px-4 py-3">
+                  <code className="flex-1 text-sm text-green-400 font-mono truncate">
+                    {getDeepLink(sharePoll.id)}
+                  </code>
+                  <button
+                    onClick={() => handleCopyLink(sharePoll.id)}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-[#2a2a2a] hover:bg-[#333] border border-[#444] rounded-lg text-xs font-bold text-white transition-colors"
+                  >
+                    {copied ? <><Check size={13} className="text-green-400" /> Copied</> : <><Copy size={13} /> Copy</>}
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Users need the <span className="text-white font-semibold">EfiqOne app installed</span> on their phone. Tapping this link opens the app and takes them directly to this poll.
+              </p>
+
+              {/* WhatsApp share */}
+              <button
+                onClick={() => handleWhatsAppShare(sharePoll)}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-[#25D366] hover:bg-[#1fb855] text-white font-bold text-sm rounded-xl transition-colors shadow-lg shadow-[#25D366]/20"
+              >
+                <MessageCircle size={18} />
+                Share via WhatsApp
+              </button>
+
+              <button
+                onClick={() => setSharePoll(null)}
+                className="w-full py-2.5 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Poll Details Modal */}
       {selectedPoll && (

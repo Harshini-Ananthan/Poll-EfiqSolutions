@@ -8,6 +8,7 @@ interface Props {
   selected: boolean;
   onSelect: () => void;
   disabled: boolean;
+  brandColor?: string;
 }
 
 export default function OptionItem({
@@ -17,36 +18,32 @@ export default function OptionItem({
   selected,
   onSelect,
   disabled,
+  brandColor = '#F97316',
 }: Props) {
   return (
     <TouchableOpacity
       style={[
         styles.container,
-        selected && styles.containerSelected,
+        selected && { borderColor: brandColor, backgroundColor: brandColor + '12' },
       ]}
       onPress={onSelect}
       disabled={disabled}
       activeOpacity={0.7}
     >
-      {/* Left emoji icon */}
       {emoji ? (
-        <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
+        <View style={[styles.iconWrap, selected && { backgroundColor: brandColor + '22' }]}>
           <Text style={styles.emoji}>{emoji}</Text>
         </View>
       ) : null}
 
-      {/* Text */}
       <View style={styles.textWrap}>
-        <Text style={[styles.label, selected && styles.labelSelected]}>
-          {label}
-        </Text>
+        <Text style={styles.label}>{label}</Text>
         {description ? (
           <Text style={styles.description}>{description}</Text>
         ) : null}
       </View>
 
-      {/* Radio */}
-      <View style={[styles.radio, selected && styles.radioSelected]}>
+      <View style={[styles.radio, selected && { borderColor: brandColor, backgroundColor: brandColor }]}>
         {selected && <View style={styles.radioDot} />}
       </View>
     </TouchableOpacity>
@@ -64,10 +61,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginBottom: 10,
   },
-  containerSelected: {
-    borderColor: '#F97316',
-    backgroundColor: '#FFF7F0',
-  },
   iconWrap: {
     width: 44,
     height: 44,
@@ -77,9 +70,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
     flexShrink: 0,
-  },
-  iconWrapSelected: {
-    backgroundColor: '#FDECD9',
   },
   emoji: {
     fontSize: 22,
@@ -92,9 +82,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1A1A1A',
     marginBottom: 2,
-  },
-  labelSelected: {
-    color: '#1A1A1A',
   },
   description: {
     fontFamily: 'Manrope_400Regular',
@@ -113,10 +100,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     flexShrink: 0,
     marginLeft: 8,
-  },
-  radioSelected: {
-    borderColor: '#F97316',
-    backgroundColor: '#F97316',
   },
   radioDot: {
     width: 8,

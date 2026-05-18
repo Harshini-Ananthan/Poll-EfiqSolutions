@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { api } from "@/lib/api";
 import { Loader2, Upload } from "lucide-react";
 
@@ -8,6 +9,7 @@ export default function CompanyProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -23,7 +25,24 @@ export default function CompanyProfilePage() {
     fetchProfile();
   }, []);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 300 * 1024) {
+      alert("Logo must be under 300 KB. Please compress the image and try again.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      setProfile((prev: any) => ({ ...prev, logoBase64: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -53,36 +72,57 @@ export default function CompanyProfilePage() {
         <section className="bg-[#242424]/50 border border-[#333]/50 rounded-xl p-6 space-y-6">
           <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Logo & name</h3>
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500 text-2xl font-bold border border-orange-500/30">
-              {profile.name?.substring(0, 2).toUpperCase() || "MV"}
+            <div className="w-20 h-20 bg-orange-500/20 rounded-xl flex items-center justify-center overflow-hidden border border-orange-500/30">
+              {profile.logoBase64 ? (
+                <Image
+                  src={`data:image/png;base64,${profile.logoBase64}`}
+                  alt="Company logo"
+                  width={80}
+                  height={80}
+                  className="object-contain w-full h-full"
+                  unoptimized
+                />
+              ) : (
+                <span className="text-orange-500 text-2xl font-bold">
+                  {profile.name?.substring(0, 2).toUpperCase() || "MV"}
+                </span>
+              )}
             </div>
             <div className="space-y-1">
-              <button 
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleLogoChange}
+              />
+              <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 bg-[#333] hover:bg-[#444] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
               >
                 <Upload size={14} /> Upload logo
               </button>
-              <p className="text-[10px] text-gray-500">PNG, JPG · Max 2 MB</p>
+              <p className="text-[10px] text-gray-500">PNG, JPG · Max 300 KB</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-6 pt-4">
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">Company name</label>
-              <input 
-                type="text" 
-                value={profile.name}
-                onChange={(e) => setProfile({...profile, name: e.target.value})}
+              <input
+                type="text"
+                value={profile.name || ""}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">Short name (shown on app)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={profile.shortName || ""}
-                onChange={(e) => setProfile({...profile, shortName: e.target.value})}
+                onChange={(e) => setProfile({ ...profile, shortName: e.target.value })}
                 placeholder="MealVote"
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
               />
@@ -96,20 +136,20 @@ export default function CompanyProfilePage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">Admin email</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={profile.adminEmail || ""}
-                onChange={(e) => setProfile({...profile, adminEmail: e.target.value})}
+                onChange={(e) => setProfile({ ...profile, adminEmail: e.target.value })}
                 placeholder="admin@mealvote.in"
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">Phone</label>
-              <input 
-                type="tel" 
+              <input
+                type="tel"
                 value={profile.phone || ""}
-                onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                 placeholder="+91 98765 43210"
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
               />
@@ -117,10 +157,10 @@ export default function CompanyProfilePage() {
           </div>
           <div className="space-y-1.5 pt-4">
             <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">Address (shown on PDF footer)</label>
-            <textarea 
+            <textarea
               rows={3}
               value={profile.address || ""}
-              onChange={(e) => setProfile({...profile, address: e.target.value})}
+              onChange={(e) => setProfile({ ...profile, address: e.target.value })}
               placeholder="No. 12, Anna Salai, Chennai..."
               className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
             />
@@ -128,16 +168,16 @@ export default function CompanyProfilePage() {
         </section>
 
         <div className="flex justify-end gap-4 pt-4">
-          <button 
+          <button
             type="button"
             className="px-6 py-2.5 bg-transparent hover:bg-[#333] text-gray-300 text-sm font-bold rounded-lg transition-colors border border-[#333]"
           >
             Discard
           </button>
-          <button 
+          <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-bold rounded-lg transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-bold rounded-lg transition-all flex items-center gap-2 disabled:opacity-60"
           >
             {saving ? <Loader2 className="animate-spin" size={18} /> : "Save changes"}
           </button>

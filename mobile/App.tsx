@@ -1,6 +1,6 @@
-import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useRef, useEffect } from 'react';
+import { ActivityIndicator, View, Linking } from 'react-native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -20,8 +20,55 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['pollapp://'],
+  config: {
+    screens: {
+      Poll: 'poll/:pollId',
+      Summary: 'summary',
+      Login: 'login',
+    },
+  },
+};
+
+const extractPollId = (url: string): string | null => {
+  const match = url.match(/pollapp:\/\/poll\/([^/?#]+)/);
+  return match ? match[1] : null;
+};
+
 function AppNavigator() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, setInitialPollId } = useAuth();
+  const pendingPollIdRef = useRef<string | null>(null);
+
+  // Capture deep link before login so it can be passed to PollScreen after auth
+  useEffect(() => {
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        const pollId = extractPollId(url);
+        if (pollId) pendingPollIdRef.current = pollId;
+      }
+    });
+
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      const pollId = extractPollId(url);
+      if (pollId) {
+        if (user) {
+          setInitialPollId(pollId);
+        } else {
+          pendingPollIdRef.current = pollId;
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [user, setInitialPollId]);
+
+  // Once user logs in and there's a pending deep link, forward it
+  useEffect(() => {
+    if (user && pendingPollIdRef.current) {
+      setInitialPollId(pendingPollIdRef.current);
+      pendingPollIdRef.current = null;
+    }
+  }, [user, setInitialPollId]);
 
   if (isLoading) {
     return (
@@ -71,7 +118,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
           <AppNavigator />
         </NavigationContainer>
       </AuthProvider>

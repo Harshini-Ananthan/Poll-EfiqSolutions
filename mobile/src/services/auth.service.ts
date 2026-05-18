@@ -1,18 +1,27 @@
 import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const toBranding = (org: any) => ({
+  companyName: org.name || org.companyName || '',
+  shortName: org.shortName || '',
+  logoBase64: org.logoBase64 || null,
+  brandColor: org.brandColor || '#F97316',
+});
+
 export const AuthService = {
   async login(phoneNumber: string) {
     const response = await api.post('/auth/mobile-login', { phoneNumber });
-    const { access_token, user } = response.data;
+    const { access_token, user, organization } = response.data;
     await AsyncStorage.setItem('token', access_token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
-    return user;
+    if (organization) {
+      await AsyncStorage.setItem('organization', JSON.stringify(organization));
+    }
+    return { user, organization };
   },
 
   async logout() {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
+    await AsyncStorage.multiRemove(['token', 'user', 'organization']);
   },
 
   async getUser() {
@@ -20,7 +29,19 @@ export const AuthService = {
     return userStr ? JSON.parse(userStr) : null;
   },
 
+  async getOrganization() {
+    const orgStr = await AsyncStorage.getItem('organization');
+    return orgStr ? JSON.parse(orgStr) : null;
+  },
+
   async getToken() {
     return await AsyncStorage.getItem('token');
-  }
+  },
+
+  async fetchOrganizationBranding() {
+    const response = await api.get('/organizations/profile');
+    const branding = toBranding(response.data);
+    await AsyncStorage.setItem('organization', JSON.stringify(branding));
+    return branding;
+  },
 };

@@ -1,5 +1,5 @@
 export type RootStackParamList = {
-  Login: undefined;
-  Poll: undefined;
+  Login: { pollId?: string } | undefined;
+  Poll: { pollId?: string } | undefined;
   Summary: undefined;
 };
