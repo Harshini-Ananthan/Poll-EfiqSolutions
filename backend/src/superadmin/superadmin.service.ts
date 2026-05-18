@@ -79,6 +79,21 @@ export class SuperadminService {
           };
         }));
         
+        const otherVotesSnap = await db.collection('votes').where('pollId', '==', pollDoc.id).where('optionId', '==', 'other').get();
+        const validOtherVotesCount = otherVotesSnap.docs.filter(doc => {
+          const data = doc.data() as any;
+          return customerIds.has(data.userId) && data.createdAt <= endOfDay.toISOString();
+        }).length;
+
+        if (validOtherVotesCount > 0) {
+          options.push({
+            id: 'other',
+            text: 'Others',
+            count: validOtherVotesCount,
+            type: 'Other',
+          });
+        }
+        
         activePolls.push({
           id: pollDoc.id,
           question: pollData.question,
@@ -97,12 +112,15 @@ export class SuperadminService {
         if (vDoc) {
           const voteData = { id: vDoc.id, ...vDoc.data() as any };
           const option = poll.options.find(o => o.id === voteData.optionId);
+          let optionText = option ? option.text : 'Unknown';
+          if (voteData.optionId === 'other') optionText = 'Others';
+          
           todayVotes.push({
             id: voteData.id,
             pollId: poll.id,
             name: customer.name || 'Unknown',
             status: 'Voted',
-            option: option ? option.text : 'Unknown',
+            option: optionText,
             location: customer.branch || 'General',
             votedTime: new Date(voteData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             comment: voteData.comment || '-',

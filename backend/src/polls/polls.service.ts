@@ -95,7 +95,82 @@ export class PollsService {
     const votesSnapshot = await db.collection('votes')
       .where('pollId', '==', id)
       .get();
-    poll.votes = votesSnapshot.docs.map(vDoc => ({ id: vDoc.id, ...(vDoc.data() as any) }));
+
+    const usersSnapshot = await db.collection('users')
+      .where('organizationId', '==', organizationId)
+      .get();
+
+    const usersMap = new Map<string, any>();
+    const customers = usersSnapshot.docs
+      .map(uDoc => {
+        const uData = uDoc.data();
+        const userObj = {
+          id: uDoc.id,
+          userId: uData.userId || uDoc.id,
+          name: uData.name || 'Unknown',
+          email: uData.email || '',
+          mobileNo: uData.mobileNo || '',
+          countryCode: uData.countryCode || '',
+          department: uData.department || '',
+          branch: uData.branch || '',
+          role: uData.role || '',
+          isEnabled: uData.isEnabled !== false
+        };
+        usersMap.set(uDoc.id, userObj);
+        if (uData.userId) {
+          usersMap.set(uData.userId, userObj);
+        }
+        return userObj;
+      })
+      .filter(u => {
+        const r = u.role || '';
+        return (r === 'USER' || r === 'employee' || r === 'EMPLOYEE') && u.isEnabled !== false;
+      });
+
+    poll.customers = customers;
+
+    let companyName = 'Unknown';
+    const orgRef = db.collection('organizations').doc(organizationId);
+    const orgDoc = await orgRef.get();
+    if (orgDoc.exists) {
+      const data = orgDoc.data() as any;
+      companyName = data.companyName || data.name || 'Unknown';
+    } else {
+      const orgSnap = await db.collection('organizations').where('organizationId', '==', organizationId).limit(1).get();
+      if (!orgSnap.empty) {
+        const data = orgSnap.docs[0].data() as any;
+        companyName = data.companyName || data.name || 'Unknown';
+      }
+    }
+    poll.companyName = companyName;
+
+    // Build options lookup map
+    const optionsMap = new Map<string, string>();
+    poll.options.forEach((opt: any) => {
+      optionsMap.set(opt.id, opt.label || opt.optionText || opt.text || 'Option');
+    });
+
+    poll.votes = votesSnapshot.docs.map(vDoc => {
+      const vData = vDoc.data() as any;
+      const user = usersMap.get(vData.userId) || null;
+
+      // Resolve option text
+      let optionText = optionsMap.get(vData.optionId) || '';
+      if (vData.optionId === 'other') {
+        optionText = vData.comment ? `Others (${vData.comment})` : 'Others';
+      }
+      if (!optionText) {
+        optionText = vData.optionId === 'other' ? 'Others' : (optionsMap.values().next().value || 'Option');
+      }
+
+      return { 
+        id: vDoc.id, 
+        ...vData,
+        userName: user ? user.name : 'Unknown',
+        user,
+        optionText
+      };
+    });
 
     return poll;
   }
