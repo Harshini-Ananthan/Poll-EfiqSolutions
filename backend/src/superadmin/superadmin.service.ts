@@ -6,42 +6,75 @@ import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @Injectable()
 export class SuperadminService {
-  async getTenantDashboardStats(organizationId: string) {
-    const startOfDay = new Date();
+  async getTenantDashboardStats(organizationId: string, dateStr?: string) {
+    const targetDate = dateStr ? new Date(dateStr) : new Date();
+    const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
 
-    const startOfMonth = new Date();
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const startOfMonth = new Date(targetDate);
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const [totalUsersSnap, votedTodaySnap, monthVotesSnap, activePollsSnap] = await Promise.all([
+    const [totalUsersSnap, votedTodaySnap, monthVotesSnap, allPollsSnap] = await Promise.all([
       db.collection('users').where('organizationId', '==', organizationId).get(),
-      db.collection('votes').where('organizationId', '==', organizationId).where('createdAt', '>=', startOfDay.toISOString()).get().catch(() => null),
-      db.collection('votes').where('organizationId', '==', organizationId).where('createdAt', '>=', startOfMonth.toISOString()).get().catch(() => null),
-      db.collection('polls')
-        .where('organizationId', '==', organizationId)
-        .where('isActive', '==', true)
-        .orderBy('createdAt', 'desc')
-        .get()
-        .catch(() => null),
+      db.collection('votes').where('organizationId', '==', organizationId).where('createdAt', '>=', startOfDay.toISOString()).where('createdAt', '<=', endOfDay.toISOString()).get().catch(() => null),
+      db.collection('votes').where('organizationId', '==', organizationId).where('createdAt', '>=', startOfMonth.toISOString()).where('createdAt', '<=', endOfDay.toISOString()).get().catch(() => null),
+      db.collection('polls').where('organizationId', '==', organizationId).orderBy('createdAt', 'desc').get().catch(() => null),
     ]);
+
+    const customers = totalUsersSnap.docs
+      .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
+      .filter(u => 
+        u.organizationId === organizationId && 
+        (u.role === 'USER' || u.role === 'employee' || u.role === 'EMPLOYEE') && 
+        u.isEnabled !== false
+      );
+    
+    const customerIds = new Set(customers.map(c => c.id));
+    const totalCustomers = customers.length;
+
+    const validVotedTodayDocs = votedTodaySnap ? votedTodaySnap.docs.filter(doc => customerIds.has((doc.data() as any).userId)) : [];
+    const validMonthVotesDocs = monthVotesSnap ? monthVotesSnap.docs.filter(doc => customerIds.has((doc.data() as any).userId)) : [];
+
+    const votedToday = new Set(validVotedTodayDocs.map(doc => (doc.data() as any).userId)).size;
+    const monthMealsServed = validMonthVotesDocs.length;
+
+    const pollIdsWithVotes = new Set(validVotedTodayDocs.map(doc => (doc.data() as any).pollId));
 
     const now = new Date().toISOString();
     const activePolls = [];
-    if (activePollsSnap && !activePollsSnap.empty) {
-      for (const pollDoc of activePollsSnap.docs) {
+
+    if (allPollsSnap && !allPollsSnap.empty) {
+      for (const pollDoc of allPollsSnap.docs) {
         const pollData = pollDoc.data() as any;
-        if (pollData.isActive && pollData.cutoffTime && pollData.cutoffTime < now) {
+        
+        const isActiveNow = pollData.isActive;
+        const hasVotesToday = pollIdsWithVotes.has(pollDoc.id);
+
+        if (isActiveNow && pollData.cutoffTime && pollData.cutoffTime < now) {
           db.collection('polls').doc(pollDoc.id).update({ isActive: false }).catch(() => null);
-          continue;
+          if (!hasVotesToday) continue; 
+        } else if (!isActiveNow && !hasVotesToday) {
+          continue; 
         }
+
         const optionsSnap = await pollDoc.ref.collection('options').get();
         const options = await Promise.all(optionsSnap.docs.map(async (optDoc) => {
           const optData = optDoc.data() as any;
+          // Count all-time votes for this option, BUT only from customers
           const optVotesSnap = await db.collection('votes').where('optionId', '==', optDoc.id).get();
+          const validOptVotesCount = optVotesSnap.docs.filter(doc => {
+            const data = doc.data() as any;
+            return customerIds.has(data.userId) && data.createdAt <= endOfDay.toISOString();
+          }).length;
+          
           return {
+            id: optDoc.id,
             text: optData.optionText,
-            count: optVotesSnap.size,
+            count: validOptVotesCount,
             type: optData.type,
           };
         }));
@@ -55,43 +88,45 @@ export class SuperadminService {
       }
     }
 
-    const votedToday = votedTodaySnap?.size || 0;
-    const totalCustomers = totalUsersSnap.size;
-
-    const todayVotes = [];
-    if (votedTodaySnap) {
-      for (const vDoc of votedTodaySnap.docs) {
-        const vData = vDoc.data() as any;
-        const user = totalUsersSnap.docs.find(u => u.id === vData.userId)?.data() as any;
+    const todayVotes: any[] = [];
+    
+    activePolls.forEach(poll => {
+      customers.forEach(customer => {
+        const vDoc = validVotedTodayDocs.find(v => (v.data() as any).userId === customer.id && (v.data() as any).pollId === poll.id);
         
-        let optionText = 'Unknown';
-        try {
-          const pollOptionDoc = await db.collection('polls').doc(vData.pollId).collection('options').doc(vData.optionId).get();
-          if (pollOptionDoc.exists) {
-            optionText = (pollOptionDoc.data() as any).optionText || (pollOptionDoc.data() as any).label;
-          }
-        } catch (e) {
-          console.error(`Failed to fetch option text for vote ${vDoc.id}`, e);
+        if (vDoc) {
+          const voteData = { id: vDoc.id, ...vDoc.data() as any };
+          const option = poll.options.find(o => o.id === voteData.optionId);
+          todayVotes.push({
+            id: voteData.id,
+            pollId: poll.id,
+            name: customer.name || 'Unknown',
+            status: 'Voted',
+            option: option ? option.text : 'Unknown',
+            location: customer.branch || 'General',
+            votedTime: new Date(voteData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            comment: voteData.comment || '-',
+          });
+        } else {
+          todayVotes.push({
+            id: `${poll.id}_${customer.id}`,
+            pollId: poll.id,
+            name: customer.name || 'Unknown',
+            status: 'Pending',
+            option: '-',
+            location: customer.branch || 'General',
+            votedTime: '-',
+            comment: '-',
+          });
         }
-
-        todayVotes.push({
-          id: vDoc.id,
-          pollId: vData.pollId,
-          name: user?.name || 'Unknown',
-          status: 'Voted',
-          option: optionText,
-          location: user?.branch || 'General',
-          votedTime: new Date(vData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          comment: vData.comment || '-',
-        });
-      }
-    }
+      });
+    });
 
     return {
       totalCustomers,
       votedToday,
       notVotedToday: Math.max(0, totalCustomers - votedToday),
-      monthMealsServed: monthVotesSnap?.size || 0,
+      monthMealsServed,
       activePolls,
       todayVotes,
     };
@@ -108,17 +143,21 @@ export class SuperadminService {
       db.collection('votes').where('createdAt', '>=', startOfDay.toISOString()).get(),
     ]);
 
-    const organizations = organizationsSnap.docs.map((doc) => doc.data() as any);
+    const organizations = organizationsSnap.docs
+      .map((doc) => doc.data() as any)
+      .filter((org) => org.organizationId !== 'master-org' && org.companyName !== 'master-org');
     const users = usersSnap.docs.map((doc) => doc.data() as any);
 
     return {
-      totalOrganizations: organizationsSnap.size,
+      totalOrganizations: organizations.length,
       totalAdmins: users.filter((user) => user.role === 'ADMIN').length,
       totalUsers: users.filter((user) => user.role === 'USER' || user.role === 'employee').length,
       activePolls: activePollsSnap.size,
       totalVotesToday: votesTodaySnap.size,
       activeOrganizations: organizations.filter((organization) => organization.isEnabled !== false).length,
       disabledOrganizations: organizations.filter((organization) => organization.isEnabled === false).length,
+      activeAdmins: users.filter((user) => user.role === 'ADMIN' && user.isEnabled !== false).length,
+      disabledAdmins: users.filter((user) => user.role === 'ADMIN' && user.isEnabled === false).length,
     };
   }
 

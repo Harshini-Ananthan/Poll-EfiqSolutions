@@ -60,7 +60,7 @@ export default function LoginPage() {
         return;
       }
       console.error("Google Login error:", err);
-      if (err.message === "ACCOUNT_DISABLED") {
+      if (err.message === "ACCOUNT_DISABLED" || err.code === "auth/user-disabled") {
         clearSession();
         router.push("/account-disabled");
         return;

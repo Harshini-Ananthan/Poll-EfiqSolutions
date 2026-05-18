@@ -10,14 +10,14 @@ import { UpdateOrganizationStatusDto } from './dto/update-organization-status.dt
 @Controller('superadmin')
 @UseGuards(FirebaseAuthGuard)
 export class SuperadminController {
-  constructor(private readonly superadminService: SuperadminService) {}
+  constructor(private readonly superadminService: SuperadminService) { }
 
   @Get('dashboard-stats')
-  async getStats(@Request() req: any) {
+  async getStats(@Request() req: any, @Query('date') date?: string) {
     if (req.user.role === 'SUPER_ADMIN') {
       return this.superadminService.getDashboardStats();
     }
-    return this.superadminService.getTenantDashboardStats(req.user.organizationId);
+    return this.superadminService.getTenantDashboardStats(req.user.organizationId, date);
   }
 
   @Get('organizations')

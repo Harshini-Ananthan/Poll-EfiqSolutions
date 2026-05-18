@@ -144,11 +144,10 @@ export default function SuperadminPage() {
   }
 
   const metricCards = [
-    { label: "Organizations", value: stats?.totalOrganizations || 0, icon: Building2 },
     { label: "Admins", value: stats?.totalAdmins || 0, icon: Shield },
     { label: "Users", value: stats?.totalUsers || 0, icon: Users },
-    { label: "Active Orgs", value: stats?.activeOrganizations || 0, icon: CheckCircle2 },
-    { label: "Disabled Orgs", value: stats?.disabledOrganizations || 0, icon: LockKeyhole },
+    { label: "Active Admins", value: stats?.activeAdmins || 0, icon: CheckCircle2 },
+    { label: "Disabled Admins", value: stats?.disabledAdmins || 0, icon: LockKeyhole },
   ];
 
   return (
@@ -171,7 +170,7 @@ export default function SuperadminPage() {
 
       {error && <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
 
-      <section className="grid grid-cols-5 gap-5 mb-10 border-b border-[#333333] pb-8">
+      <section className="grid grid-cols-4 gap-5 mb-10 border-b border-[#333333] pb-8">
         {metricCards.map((item) => {
           const Icon = item.icon;
           return (

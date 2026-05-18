@@ -146,11 +146,13 @@ const PollSection = ({ poll, todayVotes }: { poll: any, todayVotes: any[] }) => 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     async function getStats() {
+      setLoading(true);
       try {
-        const data = await api.get("/superadmin/dashboard-stats");
+        const data = await api.get(`/superadmin/dashboard-stats?date=${selectedDate}`);
         setStats(data);
       } catch (err) {
         console.error("Failed to fetch stats", err);
@@ -159,16 +161,14 @@ export default function DashboardPage() {
       }
     }
     getStats();
-  }, []);
+  }, [selectedDate]);
 
-  if (loading) return <div className="flex items-center justify-center h-full text-gray-500 font-orbitron animate-pulse uppercase tracking-widest text-xs">Fetching Dashboard Stats...</div>;
+  if (loading && !stats) return <div className="flex items-center justify-center h-full text-gray-500 font-orbitron animate-pulse uppercase tracking-widest text-xs">Fetching Dashboard Stats...</div>;
   if (!stats) return <div className="text-red-500 p-6 bg-red-500/10 border border-red-500/20 rounded-xl m-10">Failed to load dashboard data. Please check if the mock API is functional.</div>;
 
   const participationRate = stats.totalCustomers > 0 
     ? Math.min(100, Math.round((stats.votedToday / stats.totalCustomers) * 100))
     : 0;
-
-  const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="w-full">
@@ -176,10 +176,14 @@ export default function DashboardPage() {
       <header className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-10 gap-4">
         <h1 className="text-4xl font-orbitron font-bold uppercase tracking-wide text-white leading-none">Dashboard</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="flex items-center justify-between px-4 py-1.5 border border-white text-sm font-medium rounded-full bg-transparent hover:bg-white/5 transition-all min-w-[160px]">
-            {todayStr}
-            <ChevronDown size={14} className="ml-2 opacity-70" />
-          </button>
+          <div className="relative">
+            <input 
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="appearance-none bg-transparent border border-white text-sm font-medium rounded-full px-4 py-1.5 min-w-[160px] hover:bg-white/5 transition-all text-white outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert"
+            />
+          </div>
           <Link href="/dashboard/new-poll" className="flex items-center gap-2 px-4 py-1.5 border border-white text-sm font-medium rounded-full bg-transparent hover:bg-white/5 transition-all">
             Create poll
             <Plus size={14} />
