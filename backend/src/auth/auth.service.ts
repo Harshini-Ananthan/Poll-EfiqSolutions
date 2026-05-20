@@ -29,13 +29,31 @@ export class AuthService {
 
   async validateMobileUser(phoneNumber: string): Promise<any> {
     const usersRef = db.collection('users');
-    const snapshot = await usersRef.where('mobileNo', '==', phoneNumber).limit(1).get();
-    
-    if (snapshot.empty) return null;
-    
+
+    // Try exact match first (mobileNo stored with full number)
+    let snapshot = await usersRef.where('mobileNo', '==', phoneNumber).limit(1).get();
+
+    // If not found, fetch all users and match countryCode + mobileNo
+    if (snapshot.empty) {
+      const allUsers = await usersRef.get();
+      const matchedDoc = allUsers.docs.find(doc => {
+        const data = doc.data();
+        const combined = (data.countryCode || '') + (data.mobileNo || '');
+        return combined === phoneNumber;
+      });
+      if (!matchedDoc) return null;
+      const user = { id: matchedDoc.id, ...matchedDoc.data() } as any;
+      if (user.role !== 'USER' && user.role !== 'employee') {
+        throw new UnauthorizedException('Only mobile users can login');
+      }
+      await this.assertAccountEnabled(user);
+      const { passwordHash, ...result } = user;
+      return result;
+    }
+
     const userDoc = snapshot.docs[0];
     const user = { id: userDoc.id, ...userDoc.data() } as any;
-    
+
     if (user.role !== 'USER' && user.role !== 'employee') {
       throw new UnauthorizedException('Only mobile users can login');
     }

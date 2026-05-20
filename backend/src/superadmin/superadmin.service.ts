@@ -450,6 +450,49 @@ export class SuperadminService {
     });
   }
 
+  async getUserVoteDetails(organizationId: string, userId: string, startDate?: string, endDate?: string) {
+    // Avoid composite index requirement by filtering dates in memory
+    const votesSnap = await db.collection('votes')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .get();
+
+    const startISO = startDate ? new Date(startDate).toISOString() : null;
+    const endBound = endDate ? new Date(endDate) : null;
+    if (endBound) endBound.setHours(23, 59, 59, 999);
+    const endISO = endBound ? endBound.toISOString() : null;
+
+    const filteredDocs = votesSnap.docs.filter(doc => {
+      const createdAt = (doc.data() as any).createdAt;
+      if (startISO && createdAt < startISO) return false;
+      if (endISO && createdAt > endISO) return false;
+      return true;
+    });
+    const votes = await Promise.all(filteredDocs.map(async (doc) => {
+      const vote = doc.data() as any;
+      const pollDoc = await db.collection('polls').doc(vote.pollId).get();
+      let selectedAnswer = 'N/A';
+
+      if (vote.optionId === 'other') {
+        selectedAnswer = vote.comment ? `Others (${vote.comment})` : 'Others';
+      } else {
+        const optionDoc = await db.collection('polls').doc(vote.pollId).collection('options').doc(vote.optionId).get();
+        if (optionDoc.exists) {
+          const od = optionDoc.data() as any;
+          selectedAnswer = od.optionText || od.label || 'N/A';
+        }
+      }
+
+      return {
+        date: vote.createdAt,
+        question: pollDoc.exists ? (pollDoc.data() as any).question : 'Unknown',
+        selectedAnswer,
+      };
+    }));
+
+    return votes.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
   async createUser(organizationId: string, userData: any) {
     const passwordHash = await bcrypt.hash(userData.password || 'Temporary123!', 10);
     const now = new Date().toISOString();

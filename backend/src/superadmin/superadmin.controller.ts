@@ -76,6 +76,16 @@ export class SuperadminController {
     return this.superadminService.getActivity();
   }
 
+  @Get('users/:id/votes')
+  async getUserVotes(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.superadminService.getUserVoteDetails(req.user.organizationId, id, startDate, endDate);
+  }
+
   @Get('users')
   async getUsers(
     @Request() req: any,
