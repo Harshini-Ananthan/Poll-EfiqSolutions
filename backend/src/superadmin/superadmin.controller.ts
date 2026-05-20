@@ -90,6 +90,11 @@ export class SuperadminController {
     return this.superadminService.createUser(req.user.organizationId, userData);
   }
 
+  @Patch('users/:id')
+  async updateUser(@Request() req: any, @Param('id') id: string, @Body() userData: any) {
+    return this.superadminService.updateUser(req.user.organizationId, id, userData);
+  }
+
   @Delete('danger/reset-polls')
   async resetPollData(@Request() req: any) {
     return this.superadminService.resetPollData(req.user.organizationId);

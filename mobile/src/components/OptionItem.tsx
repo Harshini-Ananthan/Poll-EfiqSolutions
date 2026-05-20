@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { AppTheme, getAppTheme } from '../theme/appTheme';
 
 interface Props {
   label: string;
@@ -9,6 +10,7 @@ interface Props {
   onSelect: () => void;
   disabled: boolean;
   brandColor?: string;
+  theme?: AppTheme;
 }
 
 export default function OptionItem({
@@ -19,11 +21,19 @@ export default function OptionItem({
   onSelect,
   disabled,
   brandColor = '#F97316',
+  theme: providedTheme,
 }: Props) {
+  const theme = providedTheme || getAppTheme({ brandColor, companyName: '', shortName: '', logoBase64: null });
   return (
     <TouchableOpacity
       style={[
         styles.container,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+          padding: theme.spacing.optionPadding,
+          marginBottom: theme.spacing.optionGap,
+        },
         selected && { borderColor: brandColor, backgroundColor: brandColor + '12' },
       ]}
       onPress={onSelect}
@@ -31,19 +41,19 @@ export default function OptionItem({
       activeOpacity={0.7}
     >
       {emoji ? (
-        <View style={[styles.iconWrap, selected && { backgroundColor: brandColor + '22' }]}>
+        <View style={[styles.iconWrap, { backgroundColor: theme.sheet }, selected && { backgroundColor: brandColor + '22' }]}>
           <Text style={styles.emoji}>{emoji}</Text>
         </View>
       ) : null}
 
       <View style={styles.textWrap}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
         {description ? (
-          <Text style={styles.description}>{description}</Text>
+          <Text style={[styles.description, { color: theme.mutedText }]}>{description}</Text>
         ) : null}
       </View>
 
-      <View style={[styles.radio, selected && { borderColor: brandColor, backgroundColor: brandColor }]}>
+      <View style={[styles.radio, { borderColor: theme.strongBorder, backgroundColor: theme.surface }, selected && { borderColor: brandColor, backgroundColor: brandColor }]}>
         {selected && <View style={styles.radioDot} />}
       </View>
     </TouchableOpacity>

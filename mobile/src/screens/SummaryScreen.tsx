@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import ProfileDropdown from '../components/ProfileDropdown';
 import AppLogo from '../components/AppLogo';
 import { useAuth } from '../context/AuthContext';
 import { VotesService } from '../services/votes.service';
+import { getAppTheme } from '../theme/appTheme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Summary'>;
 
@@ -26,7 +27,6 @@ interface SummaryItem {
   date: string;
   meal: string;
   question: string;
-  type: string;
   rawDate: Date;
 }
 
@@ -40,7 +40,9 @@ const getGreeting = (): string => {
 
 export default function SummaryScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, logout } = useAuth();
+  const { user, organization, logout, refreshOrganization } = useAuth();
+  const theme = getAppTheme(organization);
+  const brandColor = theme.brandColor;
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('this');
   
@@ -51,6 +53,8 @@ export default function SummaryScreen() {
     fetchVotes();
   }, []);
 
+  useFocusEffect(useCallback(() => { refreshOrganization(); }, [refreshOrganization]));
+
   const fetchVotes = async () => {
     try {
       const data = await VotesService.getMyVotes();
@@ -59,7 +63,6 @@ export default function SummaryScreen() {
         date: new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         meal: v.meal,
         question: v.question,
-        type: v.type,
         rawDate: new Date(v.createdAt)
       }));
       setVotes(formatted);
@@ -89,48 +92,28 @@ export default function SummaryScreen() {
   const dataToDisplay = activeTab === 'this' ? thisMonthVotes : lastMonthVotes;
 
   const renderItem = ({ item }: { item: SummaryItem }) => (
-    <View style={styles.row}>
-      <Text style={styles.rowDate}>{item.date}</Text>
+    <View style={[styles.row, { paddingVertical: theme.spacing.rowPaddingY }]}>
+      <Text style={[styles.rowDate, { color: theme.faintText }]}>{item.date}</Text>
       <View style={styles.rowContent}>
-        <Text style={styles.rowQuestion}>{item.question || 'Unknown Poll'}</Text>
-        <Text style={styles.rowMeal}>Selected: {item.meal}</Text>
-      </View>
-      <View
-        style={[
-          styles.badge,
-          item.type === 'Veg' ? styles.vegBadge : item.type === 'Non-veg' ? styles.nonVegBadge : styles.otherBadge,
-        ]}
-      >
-        <Text
-          style={[
-            styles.badgeText,
-            item.type === 'Veg' ? styles.vegText : item.type === 'Non-veg' ? styles.nonVegText : styles.otherText,
-          ]}
-        >
-          {item.type}
-        </Text>
+        <Text style={[styles.rowQuestion, { color: theme.text }]}>{item.question || 'Unknown Poll'}</Text>
+        <Text style={[styles.rowMeal, { color: theme.mutedText }]}>Selected: {item.meal}</Text>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F97316" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: brandColor }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={brandColor} />
 
       {/* ── Orange top bar ── */}
-      <View style={styles.topBar}>
-        <View style={styles.topBarDots}>
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-        </View>
-      </View>
-
-      {/* ── White content area ── */}
-      <View style={styles.content}>
-        {/* ── Header: Logo + Avatar ── */}
+      <View style={[styles.topBar, { backgroundColor: brandColor }]}>
         <View style={styles.header}>
-          <AppLogo />
+          <AppLogo
+            logoBase64={organization?.logoBase64}
+            companyName={organization?.shortName || organization?.companyName}
+            brandColor={brandColor}
+            onDark
+          />
           <TouchableOpacity
             id="summary-profile-avatar"
             style={styles.avatarButton}
@@ -140,7 +123,11 @@ export default function SummaryScreen() {
             <Text style={styles.avatarText}>{user.initials}</Text>
           </TouchableOpacity>
         </View>
+      </View>
 
+      {/* ── White content area ── */}
+      <View style={[styles.hero, { paddingHorizontal: theme.spacing.screenX, paddingBottom: theme.compactMode ? 22 : 30 }]}>
+        {/* ── Header: Logo + Avatar ── */}
         {/* ── Greeting ── */}
         <View style={styles.greetingWrap}>
           <Text style={styles.greetingLine}>{getGreeting()},</Text>
@@ -148,33 +135,44 @@ export default function SummaryScreen() {
         </View>
 
         {/* ── Title ── */}
-        <Text style={styles.title}>Summary</Text>
+      </View>
+
+      <View style={[styles.content, { backgroundColor: theme.background, paddingHorizontal: theme.spacing.screenX, paddingTop: theme.spacing.contentTop }]}>
+        <Text style={[styles.title, { color: theme.text, marginBottom: theme.spacing.sectionGap }]}>Summary</Text>
 
         {/* ── Tabs ── */}
         <View style={styles.tabRow}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'this' && styles.tabActive]}
+            style={[
+              styles.tab,
+              { borderColor: activeTab === 'this' ? brandColor : theme.strongBorder },
+              activeTab === 'this' && { backgroundColor: brandColor + '12' },
+            ]}
             onPress={() => setActiveTab('this')}
             activeOpacity={0.7}
           >
             <Text
               style={[
                 styles.tabText,
-                activeTab === 'this' && styles.tabTextActive,
+                { color: activeTab === 'this' ? brandColor : theme.faintText },
               ]}
             >
               THIS MONTH
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'last' && styles.tabActive]}
+            style={[
+              styles.tab,
+              { borderColor: activeTab === 'last' ? brandColor : theme.strongBorder },
+              activeTab === 'last' && { backgroundColor: brandColor + '12' },
+            ]}
             onPress={() => setActiveTab('last')}
             activeOpacity={0.7}
           >
             <Text
               style={[
                 styles.tabText,
-                activeTab === 'last' && styles.tabTextActive,
+                { color: activeTab === 'last' ? brandColor : theme.faintText },
               ]}
             >
               LAST MONTH
@@ -184,21 +182,30 @@ export default function SummaryScreen() {
 
         {/* ── List ── */}
         {isLoading ? (
-          <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={brandColor} style={{ marginTop: 40 }} />
         ) : (
-          <FlatList
-            data={dataToDisplay}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No responses yet</Text>
-              </View>
-            }
-          />
+          <>
+            <FlatList
+              data={dataToDisplay}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContent}
+              ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: theme.border }]} />}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={[styles.emptyText, { color: theme.faintText }]}>No responses yet</Text>
+                </View>
+              }
+            />
+            <TouchableOpacity
+              style={[styles.backButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
+              onPress={() => navigation.navigate('Poll')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.backButtonText, { color: brandColor }]}>Back to polls</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -207,12 +214,14 @@ export default function SummaryScreen() {
         visible={dropdownVisible}
         onClose={() => setDropdownVisible(false)}
         onSummary={() => setDropdownVisible(false)}
-        onSettings={() => setDropdownVisible(false)}
+        onProfile={() => { setDropdownVisible(false); navigation.navigate('Profile'); }}
         onLogout={async () => {
           setDropdownVisible(false);
           await logout();
         }}
-        user={{ ...user, phone: user.phoneNumber }}
+        user={{ ...user, phone: user.phoneNumber || user.mobileNo || '' }}
+        brandColor={brandColor}
+        darkMode={theme.darkMode}
       />
     </SafeAreaView>
   );
@@ -227,19 +236,11 @@ const styles = StyleSheet.create({
   /* Orange top bar */
   topBar: {
     backgroundColor: '#F97316',
-    paddingVertical: 10,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    paddingVertical: 10,
   },
-  topBarDots: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+  hero: {
+    paddingTop: 14,
   },
 
   /* Main white area */
@@ -248,6 +249,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FBF7F2',
     paddingHorizontal: 20,
     paddingTop: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
 
   /* Header */
@@ -255,13 +258,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 0,
   },
   avatarButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F97316',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -278,13 +283,13 @@ const styles = StyleSheet.create({
   greetingLine: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 14,
-    color: '#8A7E74',
+    color: 'rgba(255,255,255,0.78)',
     marginBottom: 2,
   },
   userName: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 26,
-    color: '#1A1209',
+    color: '#FFFFFF',
     letterSpacing: -0.3,
   },
 
@@ -363,34 +368,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8A7E74',
   },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  vegBadge: {
-    backgroundColor: '#DCFCE7',
-  },
-  nonVegBadge: {
-    backgroundColor: '#FEE2E2',
-  },
-  badgeText: {
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 12,
-  },
-  vegText: {
-    color: '#16A34A',
-  },
-  nonVegText: {
-    color: '#DC2626',
-  },
-  otherBadge: {
-    backgroundColor: '#E5E7EB', // Gray
-  },
-  otherText: {
-    color: '#4B5563', // Dark Gray
-  },
-
   /* Empty */
   emptyState: {
     paddingTop: 60,
@@ -400,5 +377,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_500Medium',
     fontSize: 14,
     color: '#A89A8E',
+  },
+  backButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  backButtonText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 15,
   },
 });

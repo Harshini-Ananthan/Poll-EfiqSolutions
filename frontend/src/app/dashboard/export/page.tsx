@@ -9,6 +9,7 @@ interface Employee {
   name: string;
   department?: string;
   branch?: string;
+  role?: string;
   votes: number;
 }
 
@@ -30,7 +31,11 @@ export default function ExportPage() {
       if (endDate) queryParams.append("endDate", endDate);
       
       const data = await api.get(`/superadmin/users?${queryParams.toString()}`);
-      setEmployees(data);
+      setEmployees(
+        Array.isArray(data)
+          ? data.filter((employee: Employee) => !["ADMIN", "SUPER_ADMIN"].includes((employee.role || "").toUpperCase()))
+          : []
+      );
     } catch (err) {
       console.error("Failed to load employees:", err);
     } finally {

@@ -16,7 +16,9 @@ import { RootStackParamList } from './src/types/navigation';
 import PollScreen from './src/screens/PollScreen';
 import SummaryScreen from './src/screens/SummaryScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { DEFAULT_BRAND_COLOR, getAppTheme } from './src/theme/appTheme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -26,6 +28,7 @@ const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       Poll: 'poll/:pollId',
       Summary: 'summary',
+      Profile: 'profile',
       Login: 'login',
     },
   },
@@ -37,7 +40,8 @@ const extractPollId = (url: string): string | null => {
 };
 
 function AppNavigator() {
-  const { user, isLoading, setInitialPollId } = useAuth();
+  const { user, organization, isLoading, setInitialPollId } = useAuth();
+  const theme = getAppTheme(organization);
   const pendingPollIdRef = useRef<string | null>(null);
 
   // Capture deep link before login so it can be passed to PollScreen after auth
@@ -72,8 +76,8 @@ function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FBF7F2' }}>
-        <ActivityIndicator size="large" color="#F97316" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.brandColor} />
       </View>
     );
   }
@@ -83,13 +87,14 @@ function AppNavigator() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#FBF7F2' },
+        contentStyle: { backgroundColor: theme.background },
       }}
     >
       {user ? (
         <>
           <Stack.Screen name="Poll" component={PollScreen} />
           <Stack.Screen name="Summary" component={SummaryScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
         </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -110,7 +115,7 @@ export default function App() {
   if (!fontsLoaded) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FBF7F2' }}>
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={DEFAULT_BRAND_COLOR} />
       </View>
     );
   }

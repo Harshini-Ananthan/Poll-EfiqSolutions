@@ -13,7 +13,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onSummary: () => void;
-  onSettings: () => void;
+  onProfile: () => void;
   onLogout: () => void;
   user: {
     name: string;
@@ -21,17 +21,26 @@ interface Props {
     initials: string;
   };
   brandColor?: string;
+  darkMode?: boolean;
 }
 
 export default function ProfileDropdown({
   visible,
   onClose,
   onSummary,
-  onSettings,
+  onProfile,
   onLogout,
   user,
   brandColor = '#F97316',
+  darkMode = false,
 }: Props) {
+  const colors = {
+    surface: darkMode ? '#181818' : '#FFFFFF',
+    border: darkMode ? '#333333' : '#F0F0F0',
+    text: darkMode ? '#F8F8F8' : '#1A1A1A',
+    muted: darkMode ? '#B8B8B8' : '#6B7280',
+  };
+
   return (
     <Modal
       visible={visible}
@@ -41,7 +50,7 @@ export default function ProfileDropdown({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.dropdown, { borderColor: brandColor }]} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.dropdown, { borderColor: brandColor, backgroundColor: colors.surface }]} onPress={(e) => e.stopPropagation()}>
           {/* User Info */}
           <View style={styles.userSection}>
             <View style={styles.avatarWrap}>
@@ -50,24 +59,24 @@ export default function ProfileDropdown({
               </View>
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{user.name}</Text>
-              <Text style={styles.userPhone}>{user.phone}</Text>
+              <Text style={[styles.userName, { color: colors.text }]}>{user.name}</Text>
+              <Text style={[styles.userPhone, { color: colors.muted }]}>{user.phone}</Text>
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Summary */}
           <TouchableOpacity style={styles.menuItem} onPress={onSummary}>
-            <Text style={styles.menuText}>Summary</Text>
+            <Text style={[styles.menuText, { color: colors.text }]}>Summary</Text>
           </TouchableOpacity>
 
-          {/* Settings */}
-          <TouchableOpacity style={styles.menuItem} onPress={onSettings}>
-            <Text style={styles.menuText}>Settings</Text>
+          {/* Profile */}
+          <TouchableOpacity style={styles.menuItem} onPress={onProfile}>
+            <Text style={[styles.menuText, { color: colors.text }]}>Profile</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Logout */}
           <TouchableOpacity style={styles.menuItem} onPress={onLogout}>

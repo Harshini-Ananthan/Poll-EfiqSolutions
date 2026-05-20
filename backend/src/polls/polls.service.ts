@@ -9,6 +9,8 @@ export class PollsService {
 
     const pollRef = db.collection('polls').doc();
     const pollId = pollRef.id;
+    const createdAt = new Date().toISOString();
+    const pollNo = await this.generatePollNo(organizationId, createdAt);
 
     const poll = {
       ...pollData,
@@ -16,9 +18,10 @@ export class PollsService {
       scheduledAt: pollData.scheduledAt ?? new Date().toISOString(),
       cutoffTime: pollData.cutoffTime ?? null,
       allowVoteEdit: pollData.allowVoteEdit ?? false,
+      pollNo,
       creatorId,
       organizationId,
-      createdAt: new Date().toISOString(),
+      createdAt,
     };
 
     await pollRef.set(poll);
@@ -35,6 +38,29 @@ export class PollsService {
     await optionsBatch.commit();
 
     return { id: pollId, ...poll, options };
+  }
+
+  private async generatePollNo(organizationId: string, createdAt: string) {
+    const date = new Date(createdAt);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    const dateKey = `${day}${month}${year}`;
+    const counterRef = db.collection('pollCounters').doc(`${organizationId}_${dateKey}`);
+
+    const serial = await db.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      const nextSerial = counterDoc.exists ? ((counterDoc.data() as any).serial || 0) + 1 : 1;
+      transaction.set(counterRef, {
+        organizationId,
+        dateKey,
+        serial: nextSerial,
+        updatedAt: createdAt,
+      }, { merge: true });
+      return nextSerial;
+    });
+
+    return `${dateKey}${serial.toString().padStart(2, '0')}`;
   }
 
   async findAll(organizationId: string) {

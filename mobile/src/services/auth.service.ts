@@ -6,6 +6,8 @@ const toBranding = (org: any) => ({
   shortName: org.shortName || '',
   logoBase64: org.logoBase64 || null,
   brandColor: org.brandColor || '#F97316',
+  darkMode: org.darkMode || false,
+  compactMode: org.compactMode || false,
 });
 
 export const AuthService = {
@@ -14,10 +16,11 @@ export const AuthService = {
     const { access_token, user, organization } = response.data;
     await AsyncStorage.setItem('token', access_token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
-    if (organization) {
-      await AsyncStorage.setItem('organization', JSON.stringify(organization));
+    const branding = organization ? toBranding(organization) : null;
+    if (branding) {
+      await AsyncStorage.setItem('organization', JSON.stringify(branding));
     }
-    return { user, organization };
+    return { user, organization: branding };
   },
 
   async logout() {
@@ -27,6 +30,15 @@ export const AuthService = {
   async getUser() {
     const userStr = await AsyncStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
+  },
+
+  async saveUser(user: any) {
+    await AsyncStorage.setItem('user', JSON.stringify(user));
+  },
+
+  async fetchCurrentUser() {
+    const response = await api.get('/auth/me');
+    return response.data;
   },
 
   async getOrganization() {

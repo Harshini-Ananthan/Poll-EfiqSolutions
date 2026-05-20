@@ -5,6 +5,10 @@ interface User {
   id: string;
   name: string;
   phoneNumber: string;
+  mobileNo?: string;
+  countryCode?: string;
+  email?: string;
+  department?: string;
   initials: string;
   isEnabled?: boolean;
 }
@@ -14,6 +18,8 @@ export interface Organization {
   shortName: string;
   logoBase64: string | null;
   brandColor: string;
+  darkMode?: boolean;
+  compactMode?: boolean;
 }
 
 interface AuthContextType {
@@ -24,6 +30,7 @@ interface AuthContextType {
   setInitialPollId: (id: string | null) => void;
   login: (phoneNumber: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   refreshOrganization: () => Promise<void>;
 }
 
@@ -31,6 +38,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const toInitials = (name: string) =>
   name ? name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'U';
+
+const normalizeUser = (user: User): User => {
+  const phoneNumber = user.phoneNumber || user.mobileNo || '';
+  return {
+    ...user,
+    phoneNumber,
+    mobileNo: user.mobileNo || phoneNumber,
+    initials: toInitials(user.name),
+  };
+};
+
+const refreshCurrentUser = async (fallbackUser?: User | null) => {
+  const token = await AuthService.getToken();
+  if (!token) return fallbackUser ? normalizeUser(fallbackUser) : null;
+
+  try {
+    const freshUser = normalizeUser(await AuthService.fetchCurrentUser());
+    await AuthService.saveUser(freshUser);
+    return freshUser;
+  } catch {
+    return fallbackUser ? normalizeUser(fallbackUser) : null;
+  }
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,6 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const freshUser = await refreshCurrentUser();
+    if (!freshUser) return;
+    setUser(freshUser);
+  }, []);
+
   useEffect(() => {
     const loadSession = async () => {
       try {
@@ -57,8 +93,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           AuthService.getOrganization(),
         ]);
         if (storedUser) {
-          storedUser.initials = toInitials(storedUser.name);
-          setUser(storedUser);
+          const normalizedUser = await refreshCurrentUser(storedUser);
+          if (!normalizedUser) return;
+          await AuthService.saveUser(normalizedUser);
+          setUser(normalizedUser);
         }
         if (storedOrg) {
           setOrganization(storedOrg);
@@ -77,8 +115,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (phoneNumber: string) => {
     const { user: userData, organization: orgData } = await AuthService.login(phoneNumber);
-    userData.initials = toInitials(userData.name);
-    setUser(userData);
+    const normalizedUser = normalizeUser({
+      ...userData,
+      phoneNumber: userData.phoneNumber || userData.mobileNo || phoneNumber,
+      mobileNo: userData.mobileNo || userData.phoneNumber || phoneNumber,
+    });
+    await AuthService.saveUser(normalizedUser);
+    setUser(normalizedUser);
     setOrganization(orgData || null);
   };
 
@@ -98,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setInitialPollId,
       login,
       logout,
+      refreshUser,
       refreshOrganization,
     }}>
       {children}

@@ -63,6 +63,8 @@ export class AuthService {
           shortName: org.shortName || '',
           logoBase64: org.logoBase64 || null,
           brandColor: org.brandColor || '#F97316',
+          darkMode: org.darkMode || false,
+          compactMode: org.compactMode || false,
         };
       }
     }
@@ -73,7 +75,10 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        phoneNumber: user.phoneNumber,
+        phoneNumber: user.phoneNumber || user.mobileNo || '',
+        mobileNo: user.mobileNo || user.phoneNumber || '',
+        countryCode: user.countryCode || '',
+        department: user.department || '',
         role: user.role,
         organizationId: user.organizationId,
         isEnabled: user.isEnabled !== false,

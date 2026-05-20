@@ -34,7 +34,7 @@ export default function PollDataPage() {
 
   const handleWhatsAppShare = (poll: any) => {
     const link = getDeepLink(poll.id);
-    const message = `🗳️ *${poll.question}*\n\nPlease vote on today's poll. Open the EfiqOne app to cast your vote:\n${link}`;
+    const message = `🗳️ *${poll.question}*\n\nPlease vote on today's poll. Open the EfiqPoll app to cast your vote:\n${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -53,7 +53,8 @@ export default function PollDataPage() {
   }, []);
 
   const filteredPolls = polls.filter(poll => 
-    poll.question?.toLowerCase().includes(searchQuery.toLowerCase())
+    poll.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    poll.pollNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   const totalPages = Math.ceil(filteredPolls.length / itemsPerPage);
@@ -292,6 +293,7 @@ export default function PollDataPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#1e1e1e]/50 text-gray-400 text-xs uppercase tracking-widest font-bold">
+                <th className="px-8 py-5 border-b border-[#333]">Poll No</th>
                 <th className="px-8 py-5 border-b border-[#333]">Poll Detail</th>
                 <th className="px-8 py-5 border-b border-[#333]">Status</th>
                 <th className="px-8 py-5 border-b border-[#333]">Date & Time</th>
@@ -302,18 +304,21 @@ export default function PollDataPage() {
             <tbody className="divide-y divide-[#333]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-500 animate-pulse font-bold tracking-widest">
+                  <td colSpan={6} className="px-8 py-20 text-center text-gray-500 animate-pulse font-bold tracking-widest">
                     Fetching Poll History...
                   </td>
                 </tr>
               ) : displayedPolls.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-500 italic">
+                  <td colSpan={6} className="px-8 py-20 text-center text-gray-500 italic">
                     No polls found. Create your first one to see history.
                   </td>
                 </tr>
               ) : displayedPolls.map((poll) => (
                 <tr key={poll.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-8 py-6">
+                    <p className="text-sm font-mono font-bold text-blue-400">{poll.pollNo || "-"}</p>
+                  </td>
                   <td className="px-8 py-6">
                     <p className="font-bold text-white mb-1">{poll.question}</p>
                     <p className="text-xs text-gray-500">
@@ -444,7 +449,7 @@ export default function PollDataPage() {
               </div>
 
               <p className="text-xs text-gray-500 leading-relaxed">
-                Users need the <span className="text-white font-semibold">EfiqOne app installed</span> on their phone. Tapping this link opens the app and takes them directly to this poll.
+                Users need the <span className="text-white font-semibold">EfiqPoll app installed</span> on their phone. Tapping this link opens the app and takes them directly to this poll.
               </p>
 
               {/* WhatsApp share */}

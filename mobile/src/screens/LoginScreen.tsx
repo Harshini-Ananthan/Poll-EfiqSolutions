@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import AppLogo from '../components/AppLogo';
+import { getAppTheme } from '../theme/appTheme';
 
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, organization } = useAuth();
+  const theme = getAppTheme(organization);
 
   const handleLogin = async () => {
     if (!phoneNumber) {
@@ -26,25 +28,30 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <View style={styles.content}>
           <View style={styles.logoContainer}>
-            <AppLogo />
+            <AppLogo
+              logoBase64={organization?.logoBase64}
+              companyName={organization?.shortName || organization?.companyName}
+              brandColor={theme.brandColor}
+              onDark={theme.darkMode}
+            />
           </View>
           
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Enter your phone number to continue</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Welcome back</Text>
+          <Text style={[styles.subtitle, { color: theme.mutedText }]}>Enter your phone number to continue</Text>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
               placeholder="+1234567890"
-              placeholderTextColor="#A89A8E"
+              placeholderTextColor={theme.faintText}
               keyboardType="phone-pad"
               value={phoneNumber}
               onChangeText={setPhoneNumber}
@@ -54,7 +61,7 @@ export default function LoginScreen() {
           </View>
 
           <TouchableOpacity 
-            style={[styles.button, isLoading && styles.buttonDisabled]} 
+            style={[styles.button, { backgroundColor: theme.brandColor, paddingVertical: theme.spacing.buttonPaddingY }, isLoading && styles.buttonDisabled]} 
             onPress={handleLogin}
             disabled={isLoading}
           >

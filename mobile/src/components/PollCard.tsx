@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import OptionItem from './OptionItem';
+import { AppTheme, getAppTheme } from '../theme/appTheme';
 
 interface Option {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
   allowVoteEdit?: boolean;
   onSubmit?: (selectedId: string, comment?: string) => void;
   brandColor?: string;
+  theme?: AppTheme;
 }
 
 export default function PollCard({
@@ -37,7 +39,9 @@ export default function PollCard({
   allowVoteEdit,
   onSubmit,
   brandColor = '#F97316',
+  theme: providedTheme,
 }: Props) {
+  const theme = providedTheme || getAppTheme({ brandColor, companyName: '', shortName: '', logoBase64: null });
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId || null);
   const [comment, setComment] = useState(initialComment || '');
   const [submitted, setSubmitted] = useState(!!initialSelectedId);
@@ -81,17 +85,22 @@ export default function PollCard({
   const canSubmit = !!selectedId && !submitted && !(isOtherSelected && comment.trim() === '');
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, {
+      backgroundColor: theme.surface,
+      borderColor: theme.border,
+      padding: theme.spacing.cardPadding,
+      shadowColor: theme.shadow,
+    }]}>
       <View style={styles.headerRow}>
         <Text style={[styles.date, { color: brandColor }]}>{date}</Text>
-        <View style={styles.editBadge}>
-          <Text style={[styles.editBadgeText, !allowVoteEdit && styles.editBadgeTextDisabled]}>
+        <View style={[styles.editBadge, { borderColor: theme.border }]}>
+          <Text style={[styles.editBadgeText, { color: theme.mutedText }, !allowVoteEdit && styles.editBadgeTextDisabled]}>
             Edit
           </Text>
         </View>
       </View>
 
-      <Text style={styles.question}>{question}</Text>
+      <Text style={[styles.question, { color: theme.text, marginBottom: theme.compactMode ? 12 : 18 }]}>{question}</Text>
 
       <View style={styles.optionsContainer}>
         {displayOptions.map((opt) => (
@@ -104,15 +113,21 @@ export default function PollCard({
             onSelect={() => handleSelect(opt.id)}
             disabled={false}
             brandColor={brandColor}
+            theme={theme}
           />
         ))}
       </View>
 
       {isOtherSelected && (
         <TextInput
-          style={styles.commentInput}
+          style={[styles.commentInput, {
+            backgroundColor: theme.inputMuted,
+            borderColor: theme.border,
+            color: theme.text,
+            marginBottom: theme.compactMode ? 12 : 16,
+          }]}
           placeholder="Need other options? Add a comment…"
-          placeholderTextColor="#A89A8E"
+          placeholderTextColor={theme.faintText}
           value={comment}
           onChangeText={handleCommentChange}
           editable={!submitted || allowVoteEdit}
@@ -130,7 +145,7 @@ export default function PollCard({
         </Text>
       </TouchableOpacity>
 
-      <Text style={styles.cutoff}>Closes at {cutoffTime}</Text>
+      <Text style={[styles.cutoff, { color: theme.faintText }]}>Closes at {cutoffTime}</Text>
     </View>
   );
 }

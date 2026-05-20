@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext';
 import { PollsService } from '../services/polls.service';
 import { VotesService } from '../services/votes.service';
 import DisabledAccountScreen from './DisabledAccountScreen';
+import { AppTheme, getAppTheme } from '../theme/appTheme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Poll'>;
 
@@ -52,14 +53,14 @@ const formatTime = (isoString: string) => {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 };
 
-function EmptyState({ brandColor }: { brandColor: string }) {
+function EmptyState({ theme }: { theme: AppTheme }) {
   return (
     <View style={emptyStyles.container}>
-      <View style={[emptyStyles.iconRing, { borderColor: brandColor + '40' }]}>
+      <View style={[emptyStyles.iconRing, { borderColor: theme.brandColor + '40', backgroundColor: theme.surface }]}>
         <Text style={emptyStyles.icon}>🗳️</Text>
       </View>
-      <Text style={emptyStyles.title}>No polls today</Text>
-      <Text style={emptyStyles.subtitle}>
+      <Text style={[emptyStyles.title, { color: theme.text }]}>No polls today</Text>
+      <Text style={[emptyStyles.subtitle, { color: theme.mutedText }]}>
         Your admin hasn't posted any active polls yet. Check back later.
       </Text>
     </View>
@@ -97,7 +98,8 @@ const emptyStyles = StyleSheet.create({
 export default function PollScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, organization, logout, refreshOrganization, initialPollId, setInitialPollId } = useAuth();
-  const brandColor = organization?.brandColor ?? '#F97316';
+  const theme = getAppTheme(organization);
+  const brandColor = theme.brandColor;
 
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [polls, setPolls] = useState<any[]>([]);
@@ -204,16 +206,16 @@ export default function PollScreen() {
         decelerationRate="normal"
       >
         {/* Greeting — scrolls away on scroll-up */}
-        <View style={styles.greetingSection}>
+        <View style={[styles.greetingSection, { paddingHorizontal: theme.spacing.screenX, paddingBottom: theme.compactMode ? 20 : 28 }]}>
           <Text style={styles.greetingLine}>{getGreeting()},</Text>
           <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.dateText}>{formatHeaderDate()}</Text>
         </View>
 
         {/* White content sheet */}
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { backgroundColor: theme.sheet, paddingHorizontal: theme.spacing.screenX, paddingTop: theme.compactMode ? 18 : 24 }]}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Active Polls</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Polls</Text>
             {!isLoading && activePolls.length > 0 && (
               <View style={[styles.badge, { backgroundColor: brandColor + '18' }]}>
                 <Text style={[styles.badgeText, { color: brandColor }]}>{activePolls.length}</Text>
@@ -255,6 +257,7 @@ export default function PollScreen() {
                         allowVoteEdit={poll.allowVoteEdit}
                         onSubmit={(optionId, comment) => handleVote(poll.id, optionId, comment)}
                         brandColor={brandColor}
+                        theme={theme}
                       />
                     </Animated.View>
                   ) : (
@@ -268,13 +271,14 @@ export default function PollScreen() {
                       allowVoteEdit={poll.allowVoteEdit}
                       onSubmit={(optionId, comment) => handleVote(poll.id, optionId, comment)}
                       brandColor={brandColor}
+                      theme={theme}
                     />
                   )}
                 </View>
               );
             })
           ) : (
-            <EmptyState brandColor={brandColor} />
+            <EmptyState theme={theme} />
           )}
         </View>
       </ScrollView>
@@ -283,10 +287,11 @@ export default function PollScreen() {
         visible={dropdownVisible}
         onClose={() => setDropdownVisible(false)}
         onSummary={() => { setDropdownVisible(false); navigation.navigate('Summary'); }}
-        onSettings={() => setDropdownVisible(false)}
+        onProfile={() => { setDropdownVisible(false); navigation.navigate('Profile'); }}
         onLogout={async () => { setDropdownVisible(false); await logout(); }}
-        user={{ ...user, phone: user.phoneNumber }}
+        user={{ ...user, phone: user.phoneNumber || user.mobileNo || '' }}
         brandColor={brandColor}
+        darkMode={theme.darkMode}
       />
     </SafeAreaView>
   );

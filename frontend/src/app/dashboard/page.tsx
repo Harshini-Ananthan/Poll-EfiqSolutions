@@ -14,14 +14,11 @@ const PollSection = ({ poll, todayVotes }: { poll: any, todayVotes: any[] }) => 
   const filteredVotes = pollVotes.filter(vote => {
     if (search && !vote.name.toLowerCase().includes(search.toLowerCase())) return false;
     
-    if (filter === "Veg") {
-      return vote.option.toLowerCase().includes("veg") && !vote.option.toLowerCase().includes("non");
-    }
-    if (filter === "Non Veg") {
-      return vote.option.toLowerCase().includes("non-veg") || vote.option.toLowerCase().includes("non veg");
-    }
     if (filter === "Non Voted") {
       return vote.status === "Pending"; // Currently backend doesn't send pending, but we filter anyway
+    }
+    if (filter === "Voted") {
+      return vote.status === "Voted";
     }
     if (filter === "Commented") {
       return vote.comment && vote.comment !== "-";
@@ -57,17 +54,6 @@ const PollSection = ({ poll, todayVotes }: { poll: any, todayVotes: any[] }) => 
           ))}
         </div>
 
-        <div className="flex items-center gap-6 border-b border-[#333333]">
-          <button className="text-orange-500 pb-2 border-b-2 border-orange-500 font-semibold text-sm hover:text-orange-400 transition-colors">
-            Dashboard
-          </button>
-          <button className="text-gray-400 pb-2 font-semibold text-sm flex items-center gap-1.5 hover:text-gray-300 transition-colors">
-            Comments 
-            <span className="bg-orange-600 text-[10px] w-4 h-4 rounded-full flex items-center justify-center text-white pb-px">
-              {pollVotes.filter(v => v.comment && v.comment !== "-").length}
-            </span>
-          </button>
-        </div>
       </section>
 
       {/* Customer Today Votes */}
@@ -85,8 +71,7 @@ const PollSection = ({ poll, todayVotes }: { poll: any, todayVotes: any[] }) => 
               onChange={e => setSearch(e.target.value)}
               className="bg-[#242424] border border-[#444] rounded-lg px-4 py-2 text-sm text-gray-300 focus:outline-none w-full md:w-64 placeholder-gray-500 focus:border-orange-500/50 transition-colors"
             />
-            <button onClick={() => setFilter(filter === "Veg" ? "All" : "Veg")} className={`border px-6 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "Veg" ? "border-green-500 text-green-500 bg-green-500/10" : "border-white/80 hover:bg-white/5"}`}>Veg</button>
-            <button onClick={() => setFilter(filter === "Non Veg" ? "All" : "Non Veg")} className={`border px-6 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "Non Veg" ? "border-orange-500 text-orange-500 bg-orange-500/10" : "border-white/80 hover:bg-white/5"}`}>Non Veg</button>
+            <button onClick={() => setFilter(filter === "Voted" ? "All" : "Voted")} className={`border px-6 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "Voted" ? "border-green-500 text-green-500 bg-green-500/10" : "border-white/80 hover:bg-white/5"}`}>Voted</button>
             <button onClick={() => setFilter(filter === "Non Voted" ? "All" : "Non Voted")} className={`border px-6 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "Non Voted" ? "border-red-500 text-red-500 bg-red-500/10" : "border-white/80 hover:bg-white/5"}`}>Non Voted</button>
             <button onClick={() => setFilter(filter === "Commented" ? "All" : "Commented")} className={`border px-6 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "Commented" ? "border-blue-500 text-blue-500 bg-blue-500/10" : "border-white/80 hover:bg-white/5"}`}>Commented</button>
           </div>

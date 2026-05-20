@@ -1,17 +1,22 @@
 import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
+import { getAppTheme } from '../theme/appTheme';
 
 export default function DisabledAccountScreen() {
+  const { organization } = useAuth();
+  const theme = getAppTheme(organization);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Account Disabled</Text>
-        <Text style={styles.message}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <View style={[styles.card, { backgroundColor: theme.surface, shadowColor: theme.shadow }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Account Disabled</Text>
+        <Text style={[styles.message, { color: theme.mutedText }]}>
           Your organization access has been temporarily disabled. Please contact EfiqSolutions for further details.
         </Text>
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, { backgroundColor: theme.brandColor }]}
           activeOpacity={0.86}
           onPress={() => Linking.openURL('mailto:support@efiqsolutions.com')}
         >

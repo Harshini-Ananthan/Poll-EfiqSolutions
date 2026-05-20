@@ -472,6 +472,43 @@ export class SuperadminService {
     return this.sanitizeUser(docRef.id, newUser);
   }
 
+  async updateUser(organizationId: string, userId: string, userData: any) {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) throw new NotFoundException('User not found');
+
+    const existing = userDoc.data() as any;
+    if (existing.organizationId !== organizationId) throw new NotFoundException('User not found');
+
+    const updateData: any = { updatedAt: new Date().toISOString() };
+    const stringFields = ['name', 'email', 'mobileNo', 'countryCode', 'department', 'role', 'status'];
+
+    for (const field of stringFields) {
+      if (userData[field] !== undefined) {
+        updateData[field] = typeof userData[field] === 'string' ? userData[field].trim() : userData[field];
+      }
+    }
+
+    if (updateData.email) {
+      updateData.email = updateData.email.toLowerCase();
+      const duplicate = await db.collection('users').where('email', '==', updateData.email).limit(1).get();
+      if (!duplicate.empty && duplicate.docs[0].id !== userId) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    await userRef.update(updateData);
+
+    const authUpdate: any = {};
+    if (updateData.email && updateData.email !== existing.email) authUpdate.email = updateData.email;
+    if (updateData.name && updateData.name !== existing.name) authUpdate.displayName = updateData.name;
+    if (Object.keys(authUpdate).length) {
+      await auth.updateUser(userId, authUpdate).catch(() => undefined);
+    }
+
+    return this.sanitizeUser(userId, { ...existing, ...updateData });
+  }
+
   private countByOrganization(items: any[]) {
     const counts = new Map<string, number>();
     items.forEach((item) => {
