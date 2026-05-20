@@ -13,6 +13,8 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   
   const headers = {
     "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true",
+    "bypass-tunnel-reminder": "true",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
@@ -29,7 +31,7 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
         if (typeof window !== "undefined") window.location.href = "/account-disabled";
         throw new Error("ACCOUNT_DISABLED");
       }
-      if (response.status === 401) {
+      if (response.status === 401 && url !== "/auth/login") {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         if (typeof window !== "undefined") window.location.href = "/login";
