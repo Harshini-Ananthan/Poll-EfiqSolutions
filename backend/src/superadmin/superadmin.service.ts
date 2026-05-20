@@ -491,6 +491,75 @@ export class SuperadminService {
     };
   }
 
+  async resetPollData(organizationId: string) {
+    // 1. Get all polls
+    const pollsSnapshot = await db.collection('polls').where('organizationId', '==', organizationId).get();
+    
+    let batch = db.batch();
+    let batchCount = 0;
+
+    const commitBatch = async () => {
+      if (batchCount > 0) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    };
+
+    for (const pollDoc of pollsSnapshot.docs) {
+      batch.delete(pollDoc.ref);
+      batchCount++;
+      if (batchCount >= 400) await commitBatch();
+
+      // Delete options for this poll
+      const optionsSnapshot = await pollDoc.ref.collection('options').get();
+      for (const optDoc of optionsSnapshot.docs) {
+        batch.delete(optDoc.ref);
+        batchCount++;
+        if (batchCount >= 400) await commitBatch();
+      }
+    }
+
+    // 2. Get all votes
+    const votesSnapshot = await db.collection('votes').where('organizationId', '==', organizationId).get();
+    for (const voteDoc of votesSnapshot.docs) {
+      batch.delete(voteDoc.ref);
+      batchCount++;
+      if (batchCount >= 400) await commitBatch();
+    }
+
+    await commitBatch();
+    return { success: true };
+  }
+
+  async removeEmployees(organizationId: string) {
+    const usersSnapshot = await db.collection('users').where('organizationId', '==', organizationId).get();
+    
+    let batch = db.batch();
+    let batchCount = 0;
+
+    const commitBatch = async () => {
+      if (batchCount > 0) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    };
+
+    for (const userDoc of usersSnapshot.docs) {
+      const data = userDoc.data();
+      const role = data.role || '';
+      if (role.toUpperCase() !== 'ADMIN' && role.toUpperCase() !== 'SUPER_ADMIN') {
+        batch.delete(userDoc.ref);
+        batchCount++;
+        if (batchCount >= 400) await commitBatch();
+      }
+    }
+
+    await commitBatch();
+    return { success: true };
+  }
+
   private async resolveOrganizationRef(organizationId: string) {
     const directRef = db.collection('organizations').doc(organizationId);
     const directDoc = await directRef.get();

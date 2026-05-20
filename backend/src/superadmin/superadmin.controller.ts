@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { SuperadminService } from './superadmin.service';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -89,4 +89,15 @@ export class SuperadminController {
   async createUser(@Request() req: any, @Body() userData: any) {
     return this.superadminService.createUser(req.user.organizationId, userData);
   }
+
+  @Delete('danger/reset-polls')
+  async resetPollData(@Request() req: any) {
+    return this.superadminService.resetPollData(req.user.organizationId);
+  }
+
+  @Delete('danger/remove-employees')
+  async removeEmployees(@Request() req: any) {
+    return this.superadminService.removeEmployees(req.user.organizationId);
+  }
+
 }

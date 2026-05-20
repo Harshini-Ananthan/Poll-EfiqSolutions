@@ -183,6 +183,24 @@ export class PollsService {
 
   async remove(id: string, organizationId: string) {
     await this.findOne(id, organizationId);
-    return db.collection('polls').doc(id).delete();
+    
+    // Delete the poll document
+    await db.collection('polls').doc(id).delete();
+    
+    // Delete the options subcollection
+    const optionsSnapshot = await db.collection('polls').doc(id).collection('options').get();
+    const batch = db.batch();
+    optionsSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    // Delete associated votes
+    const votesSnapshot = await db.collection('votes').where('pollId', '==', id).get();
+    votesSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    return { success: true };
   }
 }

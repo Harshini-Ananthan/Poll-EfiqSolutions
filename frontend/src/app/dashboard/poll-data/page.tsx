@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Clock, CheckCircle2, Eye, X, Download, Copy, Share2, Check, MessageCircle } from "lucide-react";
+import { Search, Clock, CheckCircle2, Eye, X, Download, Copy, Share2, Check, MessageCircle, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function PollDataPage() {
@@ -86,6 +86,17 @@ export default function PollDataPage() {
       setPolls(polls.map(p => p.id === poll.id ? { ...p, isActive: !p.isActive } : p));
     } catch (error) {
       console.error("Failed to toggle status", error);
+    }
+  };
+
+  const handleDeletePoll = async (pollId: string) => {
+    if (!window.confirm("Are you sure you want to completely delete this poll? This action cannot be undone.")) return;
+    try {
+      await api.delete(`/polls/${pollId}`);
+      setPolls(polls.filter(p => p.id !== pollId));
+    } catch (error) {
+      console.error("Failed to delete poll", error);
+      alert("Failed to delete poll");
     }
   };
 
@@ -358,8 +369,16 @@ export default function PollDataPage() {
                       <button
                         onClick={() => handleViewDetails(poll)}
                         className="p-2 text-white hover:text-blue-500 transition-colors"
+                        title="View details"
                       >
                         <Eye size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePoll(poll.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Delete poll"
+                      >
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </td>

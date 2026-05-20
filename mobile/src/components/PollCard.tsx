@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import OptionItem from './OptionItem';
 
 interface Option {
@@ -85,11 +84,11 @@ export default function PollCard({
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={[styles.date, { color: brandColor }]}>{date}</Text>
-        <MaterialCommunityIcons
-          name={allowVoteEdit ? 'pencil' : 'pencil-off'}
-          size={16}
-          color={allowVoteEdit ? '#8A7E74' : '#D1D5DB'}
-        />
+        <View style={styles.editBadge}>
+          <Text style={[styles.editBadgeText, !allowVoteEdit && styles.editBadgeTextDisabled]}>
+            Edit
+          </Text>
+        </View>
       </View>
 
       <Text style={styles.question}>{question}</Text>
@@ -160,6 +159,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
+  },
+  editBadge: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  editBadgeText: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 10,
+    color: '#8A7E74',
+    textTransform: 'uppercase',
+  },
+  editBadgeTextDisabled: {
+    color: '#D1D5DB',
+    textDecorationLine: 'line-through',
   },
   question: {
     fontFamily: 'Manrope_600SemiBold',
