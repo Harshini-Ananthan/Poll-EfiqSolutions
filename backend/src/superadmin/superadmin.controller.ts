@@ -105,6 +105,11 @@ export class SuperadminController {
     return this.superadminService.updateUser(req.user.organizationId, id, userData);
   }
 
+  @Delete('users/:id')
+  async deleteUser(@Request() req: any, @Param('id') id: string) {
+    return this.superadminService.deleteUser(req.user.organizationId, id);
+  }
+
   @Delete('danger/reset-polls')
   async resetPollData(@Request() req: any) {
     return this.superadminService.resetPollData(req.user.organizationId);

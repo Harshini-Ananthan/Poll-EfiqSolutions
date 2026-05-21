@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db, auth } from '../config/firebase';
 import * as bcrypt from 'bcrypt';
 import { CreateAdminDto } from './dto/create-admin.dto';
@@ -441,13 +441,18 @@ export class SuperadminService {
       }
     });
 
-    return usersSnap.docs.map((doc) => {
-      const user = this.sanitizeUser(doc.id, doc.data() as any);
-      return {
-        ...user,
-        votes: voteCounts.get(doc.id) || 0,
-      };
-    });
+    return usersSnap.docs
+      .map((doc) => {
+        const user = this.sanitizeUser(doc.id, doc.data() as any);
+        return {
+          ...user,
+          votes: voteCounts.get(doc.id) || 0,
+        };
+      })
+      .filter((user) => {
+        const role = String(user.role || '').toUpperCase();
+        return role !== 'ADMIN' && role !== 'SUPER_ADMIN';
+      });
   }
 
   async getUserVoteDetails(organizationId: string, userId: string, startDate?: string, endDate?: string) {
@@ -495,17 +500,26 @@ export class SuperadminService {
   }
 
   async createUser(organizationId: string, userData: any) {
+    const name = typeof userData.name === 'string' ? userData.name.trim() : '';
+    const mobileNo = typeof userData.mobileNo === 'string' ? userData.mobileNo.trim() : '';
+    if (!name) {
+      throw new BadRequestException('Full name is required');
+    }
+    if (!/^\d{10}$/.test(mobileNo)) {
+      throw new BadRequestException('Mobile no must be exactly 10 digits');
+    }
+
     const passwordHash = await bcrypt.hash(userData.password || 'Temporary123!', 10);
     const now = new Date().toISOString();
     const newUser = {
-      name: userData.name,
+      name,
       email: userData.email || '',
       passwordHash,
       organizationId,
       role: userData.role || 'USER',
       isEnabled: true,
       status: 'Active',
-      mobileNo: userData.mobileNo || '',
+      mobileNo,
       countryCode: userData.countryCode || '+91',
       department: userData.department || '',
       createdAt: now,
@@ -551,6 +565,23 @@ export class SuperadminService {
     }
 
     return this.sanitizeUser(userId, { ...existing, ...updateData });
+  }
+
+  async deleteUser(organizationId: string, userId: string) {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) throw new NotFoundException('User not found');
+
+    const existing = userDoc.data() as any;
+    if (existing.organizationId !== organizationId) throw new NotFoundException('User not found');
+
+    const role = String(existing.role || '').toUpperCase();
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') throw new NotFoundException('User not found');
+
+    await userRef.delete();
+    await auth.deleteUser(userId).catch(() => undefined);
+
+    return { success: true };
   }
 
   private countByOrganization(items: any[]) {

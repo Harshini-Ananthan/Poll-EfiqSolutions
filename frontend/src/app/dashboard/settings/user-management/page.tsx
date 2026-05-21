@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import { Loader2, Search, UserPlus, MoreVertical, Edit2, X } from "lucide-react";
+import { Loader2, Search, UserPlus, Edit2, Trash2, X } from "lucide-react";
 
 export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,7 @@ export default function UserManagementPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: name === "mobileNo" ? value.replace(/\D/g, "").slice(0, 10) : value }));
   };
 
   const handleEdit = (user: any) => {
@@ -57,6 +57,18 @@ export default function UserManagementPage() {
       role: user.role || "employee"
     });
     setIsModalOpen(true);
+  };
+
+  const handleDelete = async (user: any) => {
+    const confirmed = window.confirm(`Delete ${user.name || "this employee"}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/superadmin/users/${user.id}`);
+      setUsers((current) => current.filter((item) => item.id !== user.id));
+    } catch (err: any) {
+      alert("Failed to delete employee: " + (err.message || "Unknown error"));
+    }
   };
 
   const closeModal = () => {
@@ -74,12 +86,26 @@ export default function UserManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      alert("Full name is required.");
+      return;
+    }
+    if (!/^\d{10}$/.test(formData.mobileNo.trim())) {
+      alert("Mobile no must be exactly 10 digits.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        name: formData.name.trim(),
+        mobileNo: formData.mobileNo.trim(),
+      };
       if (editingUser) {
-        await api.patch(`/superadmin/users/${editingUser.id}`, formData);
+        await api.patch(`/superadmin/users/${editingUser.id}`, payload);
       } else {
-        await api.post("/superadmin/users", formData);
+        await api.post("/superadmin/users", payload);
       }
       closeModal();
       fetchUsers();
@@ -90,10 +116,15 @@ export default function UserManagementPage() {
     }
   };
 
-  const filteredUsers = users.filter((u) => 
-    (u.name || "").toLowerCase().includes(search.toLowerCase()) || 
-    (u.department?.toLowerCase() || "").includes(search.toLowerCase())
-  );
+  const filteredUsers = users.filter((u) => {
+    const role = String(u.role || "").toUpperCase();
+    if (role === "ADMIN" || role === "SUPER_ADMIN") return false;
+
+    return (
+      (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.department?.toLowerCase() || "").includes(search.toLowerCase())
+    );
+  });
 
   if (loading && users.length === 0) return <div className="flex items-center justify-center h-[400px]"><Loader2 className="animate-spin text-orange-500" /></div>;
   if (error && users.length === 0) return <div className="text-red-500 p-6 bg-red-500/10 border border-red-500/20 rounded-xl">{error}</div>;
@@ -167,13 +198,23 @@ export default function UserManagementPage() {
                       {u.status || "Active"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
                     <button 
                       onClick={() => handleEdit(u)}
                       className="p-2 hover:bg-[#333] text-gray-400 hover:text-white rounded-lg transition-colors border border-transparent hover:border-[#444]"
+                      title="Edit employee"
                     >
                       <Edit2 size={16} />
                     </button>
+                    <button
+                      onClick={() => handleDelete(u)}
+                      className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
+                      title="Delete employee"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -195,7 +236,7 @@ export default function UserManagementPage() {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Full Name</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Full Name *</label>
                 <input 
                   required
                   name="name"
@@ -219,7 +260,7 @@ export default function UserManagementPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Mobile No</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Mobile No *</label>
                 <div className="flex gap-2">
                   <input 
                     name="countryCode"
@@ -230,6 +271,12 @@ export default function UserManagementPage() {
                   />
                   <input 
                     name="mobileNo"
+                    required
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    maxLength={10}
+                    title="Mobile no must be exactly 10 digits"
                     value={formData.mobileNo}
                     onChange={handleInputChange}
                     className="flex-1 bg-[#242424] border border-[#333] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50"
