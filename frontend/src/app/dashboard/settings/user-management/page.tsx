@@ -152,7 +152,7 @@ export default function UserManagementPage() {
             onClick={() => setIsModalOpen(true)}
             className="px-4 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-bold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
           >
-            <UserPlus size={18} /> Add employee
+            <UserPlus size={18} /> Add user
           </button>
         </div>
 
@@ -170,7 +170,7 @@ export default function UserManagementPage() {
               {filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-10 text-center text-gray-500 italic text-sm">
-                    No employees found matching "{search}"
+                    No users found matching "{search}"
                   </td>
                 </tr>
               ) : filteredUsers.map((u) => (
@@ -228,7 +228,7 @@ export default function UserManagementPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-[#333] flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">{editingUser ? "Edit Employee" : "Add New Employee"}</h2>
+              <h2 className="text-xl font-bold text-white">{editingUser ? "Edit User" : "Add New User"}</h2>
               <button onClick={closeModal} className="text-gray-500 hover:text-white transition-colors">
                 <X size={20} />
               </button>
