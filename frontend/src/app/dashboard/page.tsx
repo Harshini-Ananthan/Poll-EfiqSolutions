@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import Link from "next/link";
 
@@ -132,19 +132,27 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const getStats = async (date: string = selectedDate) => {
+    setLoading(true);
+    try {
+      const data = await api.get(`/superadmin/dashboard-stats?date=${date}`);
+      setStats(data);
+    } catch (err) {
+      console.error("Failed to fetch stats", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await getStats();
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
-    async function getStats() {
-      setLoading(true);
-      try {
-        const data = await api.get(`/superadmin/dashboard-stats?date=${selectedDate}`);
-        setStats(data);
-      } catch (err) {
-        console.error("Failed to fetch stats", err);
-      } finally {
-        setLoading(false);
-      }
-    }
     getStats();
   }, [selectedDate]);
 
@@ -169,6 +177,14 @@ export default function DashboardPage() {
               className="appearance-none bg-transparent border border-white text-sm font-medium rounded-full px-4 py-1.5 min-w-[160px] hover:bg-white/5 transition-all text-white outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert"
             />
           </div>
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-4 py-1.5 border border-white text-sm font-medium rounded-full bg-transparent hover:bg-white/5 transition-all disabled:opacity-50"
+            title="Refresh dashboard data"
+          >
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+          </button>
           <Link href="/dashboard/new-poll" className="flex items-center gap-2 px-4 py-1.5 border border-white text-sm font-medium rounded-full bg-transparent hover:bg-white/5 transition-all">
             Create poll
             <Plus size={14} />

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { routeForUser, clearSession, storeUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,15 +110,25 @@ export default function LoginPage() {
             <label className="block text-xs font-bold text-[#666] uppercase tracking-widest mb-2">
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-[#444] bg-[#242424] px-4 py-3 text-sm text-gray-200 outline-none transition-colors placeholder:text-gray-500 focus:border-blue-500/60"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-[#444] bg-[#242424] px-4 py-3 text-sm text-gray-200 outline-none transition-colors placeholder:text-gray-500 focus:border-blue-500/60 pr-12"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button

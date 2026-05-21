@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, Building2, CheckCircle2, LockKeyhole, Plus, Power, RefreshCw, Search, Shield, Users, Vote } from "lucide-react";
+import { Activity, Building2, CheckCircle2, LockKeyhole, Plus, Power, RefreshCw, Search, Shield, Users, Vote, Eye, EyeOff } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { api } from "@/lib/api";
 
@@ -47,6 +47,7 @@ export default function SuperadminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
   async function loadServerViews() {
     const [statsData, orgData, adminData, activity] = await Promise.all([
@@ -193,15 +194,35 @@ export default function SuperadminPage() {
           </div>
           <div className="space-y-3">
             {Object.keys(emptyForm).map((key) => (
-              <input
-                key={key}
-                type={key === "password" ? "password" : key === "email" ? "email" : "text"}
-                value={form[key as keyof typeof form]}
-                onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
-                placeholder={key === "companyName" ? "Company name" : key === "mobileNo" ? "Mobile number" : key[0].toUpperCase() + key.slice(1)}
-                className="w-full rounded-lg border border-[#444] bg-[#242424] px-4 py-2.5 text-sm text-gray-200 outline-none transition-colors placeholder:text-gray-500 focus:border-blue-500/60"
-                required={key !== "mobileNo"}
-              />
+              key === "password" ? (
+                <div key={key} className="relative">
+                  <input
+                    type={showPassword["createForm"] ? "text" : "password"}
+                    value={form[key as keyof typeof form]}
+                    onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+                    placeholder="Password"
+                    className="w-full rounded-lg border border-[#444] bg-[#242424] px-4 py-2.5 text-sm text-gray-200 outline-none transition-colors placeholder:text-gray-500 focus:border-blue-500/60 pr-10"
+                    required={true}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => ({ ...current, createForm: !current.createForm }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    {showPassword["createForm"] ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              ) : (
+                <input
+                  key={key}
+                  type={key === "email" ? "email" : "text"}
+                  value={form[key as keyof typeof form]}
+                  onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+                  placeholder={key === "companyName" ? "Company name" : key === "mobileNo" ? "Mobile number" : key[0].toUpperCase() + key.slice(1)}
+                  className="w-full rounded-lg border border-[#444] bg-[#242424] px-4 py-2.5 text-sm text-gray-200 outline-none transition-colors placeholder:text-gray-500 focus:border-blue-500/60"
+                  required={key !== "mobileNo"}
+                />
+              )
             ))}
           </div>
           <button
@@ -233,13 +254,22 @@ export default function SuperadminPage() {
                   {admin.isEnabled ? "Disable" : "Enable"}
                 </button>
                 <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={passwordReset[admin.id] || ""}
-                    onChange={(event) => setPasswordReset((current) => ({ ...current, [admin.id]: event.target.value }))}
-                    placeholder="New password"
-                    className="min-w-0 flex-1 rounded-lg border border-[#444] bg-[#1e1e1e] px-3 py-2 text-sm text-gray-200 outline-none placeholder:text-gray-500 focus:border-blue-500/60"
-                  />
+                  <div className="min-w-0 flex-1 relative">
+                    <input
+                      type={showPassword[admin.id] ? "text" : "password"}
+                      value={passwordReset[admin.id] || ""}
+                      onChange={(event) => setPasswordReset((current) => ({ ...current, [admin.id]: event.target.value }))}
+                      placeholder="New password"
+                      className="w-full rounded-lg border border-[#444] bg-[#1e1e1e] px-3 py-2 text-sm text-gray-200 outline-none placeholder:text-gray-500 focus:border-blue-500/60 pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => ({ ...current, [admin.id]: !current[admin.id] }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                      {showPassword[admin.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
                   <button onClick={() => resetPassword(admin)} className="rounded-lg border border-white/70 px-3 py-2 text-sm font-semibold hover:bg-white/5">
                     Reset
                   </button>
