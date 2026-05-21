@@ -486,6 +486,7 @@ export class SuperadminService {
       return {
         date: vote.createdAt,
         question: pollDoc.exists ? (pollDoc.data() as any).question : 'Unknown',
+        category: pollDoc.exists ? (pollDoc.data() as any).category || '' : '',
         selectedAnswer,
       };
     }));

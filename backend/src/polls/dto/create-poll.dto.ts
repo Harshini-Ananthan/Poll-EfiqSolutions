@@ -42,4 +42,8 @@ export class CreatePollDto {
   @IsOptional()
   @IsBoolean()
   sendReminder?: boolean;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

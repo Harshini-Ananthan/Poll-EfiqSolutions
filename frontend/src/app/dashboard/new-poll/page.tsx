@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, X, Smartphone, Bell, History, Loader2 } from "lucide-react";
+import { Plus, X, Smartphone, Bell, History, Loader2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -20,8 +20,25 @@ export default function NewPollPage() {
     voteEditing: false,
     sendReminder: true,
   });
+  const [categories, setCategories] = useState<string[]>([]);
+  const [category, setCategory] = useState("");
 
   React.useEffect(() => {
+    // Fetch categories
+    api.get("/organizations/profile")
+      .then((data: any) => {
+        const cats = data?.categories && Array.isArray(data.categories) && data.categories.length > 0
+          ? data.categories
+          : ["Breakfast", "Lunch", "Dinner", "Snacks", "Beverages"];
+        setCategories(cats);
+        setCategory(cats[0] || "");
+      })
+      .catch(() => {
+        const cats = ["Breakfast", "Lunch", "Dinner", "Snacks", "Beverages"];
+        setCategories(cats);
+        setCategory(cats[0] || "");
+      });
+
     const defaultTime = new Date();
     defaultTime.setHours(defaultTime.getHours() + 2);
     const year = defaultTime.getFullYear();
@@ -53,6 +70,7 @@ export default function NewPollPage() {
         allowVoteEdit: settings.voteEditing,
         sendReminder: settings.sendReminder,
         cutoffTime: finalCutoffTime,
+        category,
       });
       router.push("/dashboard");
     } catch (err) {
@@ -87,7 +105,7 @@ export default function NewPollPage() {
 
         {/* FORM SECTION */}
         <section className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-gray-400 text-sm font-medium mb-3 uppercase tracking-wider">Poll Question</label>
               <input
@@ -97,6 +115,23 @@ export default function NewPollPage() {
                 placeholder="Ex: Today lunch menu"
                 className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-6 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
               />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm font-medium mb-3 uppercase tracking-wider">Category</label>
+              <div className="relative">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-[#1e1e1e] border border-[#333] rounded-xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat} className="bg-[#1e1e1e]">
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
+              </div>
             </div>
             <div>
               <label className="block text-gray-400 text-sm font-medium mb-3 uppercase tracking-wider">Cutoff Time</label>

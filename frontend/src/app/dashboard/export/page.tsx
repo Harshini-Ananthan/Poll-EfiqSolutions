@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Download, Search, CheckCircle2, ChevronDown, Loader2, Users, FileText, Sheet } from "lucide-react";
 import { api } from "@/lib/api";
 
-const CONTACT_EMAIL = "efiqtools@gmail.com";
+const CONTACT_EMAIL = "hello@efiqsolutions.com";
 const FOOTER_DEV = "DEVELOPED BY EFIQ Solutions";
-const FOOTER_CONTACT = `For any app development contact ${CONTACT_EMAIL}`;
+const FOOTER_CONTACT = `For any app development contact ${CONTACT_EMAIL} | https://efiqsolutions.com`;
 
 interface Employee {
   id: string;
@@ -23,6 +23,7 @@ interface VoteDetail {
   date: string;
   question: string;
   selectedAnswer: string;
+  category?: string;
 }
 
 interface UserExportData {
@@ -42,13 +43,21 @@ export default function ExportPage() {
   const [endDate, setEndDate] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [orgDisplayName, setOrgDisplayName] = useState("Organisation");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [exportMode, setExportMode] = useState<"option" | "category">("option");
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.get("/organizations/profile").then((data: any) => {
       const name = data?.shortName || data?.orgDisplayName || "Organisation";
       setOrgDisplayName(name);
-    }).catch(() => {});
+      const cats = data?.categories && Array.isArray(data.categories) && data.categories.length > 0
+        ? data.categories
+        : ["Breakfast", "Lunch", "Dinner", "Snacks", "Beverages"];
+      setCategories(cats);
+    }).catch(() => {
+      setCategories(["Breakfast", "Lunch", "Dinner", "Snacks", "Beverages"]);
+    });
   }, []);
 
   const loadEmployees = async () => {
@@ -165,40 +174,147 @@ export default function ExportPage() {
       const data = await fetchExportData();
       if (!data) return;
 
+      const polls: any[] = await api.get("/polls").catch(() => []);
+
       const rows: string[] = [];
-      rows.push(`"${orgDisplayName}"`);
-      rows.push("");
+      const refDate = startDate ? new Date(startDate) : new Date();
+      const month = refDate.toLocaleString("en-US", { month: "long" });
 
-      const dateRange = startDate || endDate
-        ? `Date Range: ${startDate || "All"} to ${endDate || "All"}`
-        : "Date Range: All Dates";
-      rows.push(`"${dateRange}"`);
-      rows.push("");
-
-      data.forEach(({ employee, votes }) => {
-        const mobile = `${employee.countryCode || ""}${employee.mobileNo || ""}`.trim() || "N/A";
-        rows.push(`"Name","${employee.name}"`);
-        rows.push(`"Mobile","${mobile}"`);
-        if (employee.branch) rows.push(`"Branch","${employee.branch}"`);
-        if (employee.department) rows.push(`"Department","${employee.department}"`);
+      if (exportMode === "category") {
+        rows.push(`"${orgDisplayName} - ${month} Bill"`);
         rows.push("");
-        rows.push(`"Date","Question","Selected Answer"`);
 
-        if (votes.length === 0) {
-          rows.push(`"—","No poll responses in this period","—"`);
-        } else {
-          votes.forEach(v => {
-            rows.push([
-              `"${formatDate(v.date)}"`,
-              `"${v.question.replace(/"/g, '""')}"`,
-              `"${v.selectedAnswer.replace(/"/g, '""')}"`,
-            ].join(","));
+        data.forEach(({ employee, votes }) => {
+          const mobile = `${employee.countryCode || ""}${employee.mobileNo || ""}`.trim() || "N/A";
+          rows.push(`"Name","${employee.name}"`);
+          rows.push(`"Mobile","${mobile}"`);
+          if (employee.branch) rows.push(`"Branch","${employee.branch}"`);
+          if (employee.department) rows.push(`"Department","${employee.department}"`);
+          rows.push("");
+
+          // Columns: Date, <Cat 1>, <Cat 1 Qty>, ..., Extra, Details
+          const header = ["Date"];
+          categories.forEach(cat => {
+            header.push(cat);
+            header.push(`${cat} Qty`);
           });
-        }
+          header.push("Extra");
+          header.push("Details");
+          rows.push(header.map(h => `"${h}"`).join(","));
+
+          // Gather all dates from polls and votes
+          const dateKeys = new Set<string>();
+          polls.forEach(p => {
+            if (p.scheduledAt) dateKeys.add(p.scheduledAt.split("T")[0]);
+          });
+          votes.forEach(v => {
+            if (v.date) dateKeys.add(v.date.split("T")[0]);
+          });
+
+          // Filter by date range
+          let sortedDates = Array.from(dateKeys).sort();
+          if (startDate) sortedDates = sortedDates.filter(d => d >= startDate);
+          if (endDate) sortedDates = sortedDates.filter(d => d <= endDate);
+
+          if (sortedDates.length === 0) {
+            const emptyRow = ["—"];
+            categories.forEach(() => {
+              emptyRow.push("—");
+              emptyRow.push("—");
+            });
+            emptyRow.push("—");
+            emptyRow.push("No data in this period");
+            rows.push(emptyRow.map(r => `"${r}"`).join(","));
+          } else {
+            sortedDates.forEach(dateStr => {
+              const displayDate = formatDate(dateStr);
+              const rowData: string[] = [displayDate];
+              
+              let extraComment = "";
+              let detailsText = "";
+
+              categories.forEach(cat => {
+                const hasPoll = polls.some(p => p.category === cat && p.scheduledAt && p.scheduledAt.split("T")[0] === dateStr);
+                const catVotes = votes.filter(v => v.category === cat && v.date && v.date.split("T")[0] === dateStr);
+
+                if (hasPoll) {
+                  rowData.push("Yes");
+                  rowData.push(catVotes.length > 0 ? String(catVotes.length) : "0");
+                } else {
+                  rowData.push("No");
+                  rowData.push("-");
+                }
+
+                catVotes.forEach(v => {
+                  if (v.selectedAnswer.includes("Others") || v.selectedAnswer.includes("comment")) {
+                    extraComment = extraComment ? `${extraComment}; ${v.selectedAnswer}` : v.selectedAnswer;
+                  }
+                  const detail = `${v.question}: ${v.selectedAnswer}`;
+                  detailsText = detailsText ? `${detailsText}; ${detail}` : detail;
+                });
+              });
+
+              rowData.push(extraComment || "-");
+              rowData.push(detailsText || "-");
+
+              rows.push(rowData.map(r => `"${r.replace(/"/g, '""')}"`).join(","));
+            });
+          }
+
+          // Summary section
+          rows.push("");
+          rows.push(`"Summary of Quantities"`);
+          categories.forEach(cat => {
+            let total = 0;
+            sortedDates.forEach(dateStr => {
+              const hasPoll = polls.some(p => p.category === cat && p.scheduledAt && p.scheduledAt.split("T")[0] === dateStr);
+              const catVotes = votes.filter(v => v.category === cat && v.date && v.date.split("T")[0] === dateStr);
+              if (hasPoll && catVotes.length > 0) {
+                total += catVotes.length;
+              }
+            });
+            rows.push(`"${cat}","${total}"`);
+          });
+
+          rows.push("");
+          rows.push("---");
+          rows.push("");
+        });
+      } else {
+        rows.push(`"${orgDisplayName}"`);
         rows.push("");
-        rows.push("---");
+
+        const dateRange = startDate || endDate
+          ? `Date Range: ${startDate || "All"} to ${endDate || "All"}`
+          : "Date Range: All Dates";
+        rows.push(`"${dateRange}"`);
         rows.push("");
-      });
+
+        data.forEach(({ employee, votes }) => {
+          const mobile = `${employee.countryCode || ""}${employee.mobileNo || ""}`.trim() || "N/A";
+          rows.push(`"Name","${employee.name}"`);
+          rows.push(`"Mobile","${mobile}"`);
+          if (employee.branch) rows.push(`"Branch","${employee.branch}"`);
+          if (employee.department) rows.push(`"Department","${employee.department}"`);
+          rows.push("");
+          rows.push(`"Date","Question","Selected Answer"`);
+
+          if (votes.length === 0) {
+            rows.push(`"—","No poll responses in this period","—"`);
+          } else {
+            votes.forEach(v => {
+              rows.push([
+                `"${formatDate(v.date)}"`,
+                `"${v.question.replace(/"/g, '""')}"`,
+                `"${v.selectedAnswer.replace(/"/g, '""')}"`,
+              ].join(","));
+            });
+          }
+          rows.push("");
+          rows.push("---");
+          rows.push("");
+        });
+      }
 
       rows.push(`"${FOOTER_DEV}"`);
       rows.push(`"${FOOTER_CONTACT}"`);
@@ -224,14 +340,27 @@ export default function ExportPage() {
       const data = await fetchExportData();
       if (!data) return;
 
+      const polls: any[] = await api.get("/polls").catch(() => []);
+
       const { default: jsPDF } = await import("jspdf");
       const { autoTable } = await import("jspdf-autotable");
 
-      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const doc = new jsPDF({ 
+        orientation: exportMode === "category" ? "landscape" : "portrait", 
+        unit: "mm", 
+        format: "a4" 
+      });
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
       const dateRange = startDate || endDate ? `${startDate || "All"} to ${endDate || "All"}` : "All Dates";
+
+      const refDate = startDate ? new Date(startDate) : new Date();
+      const month = refDate.toLocaleString("en-US", { month: "long" });
+
+      const reportTitle = exportMode === "category" 
+        ? `${orgDisplayName} - ${month} Bill` 
+        : orgDisplayName.toUpperCase();
 
       // ── Header ──────────────────────────────────────────
       doc.setFillColor(21, 94, 117);
@@ -240,12 +369,19 @@ export default function ExportPage() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
       doc.setTextColor(255, 255, 255);
-      doc.text(orgDisplayName.toUpperCase(), pageW / 2, 16, { align: "center" });
+      doc.text(reportTitle.toUpperCase(), pageW / 2, 16, { align: "center" });
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.setTextColor(207, 226, 232);
-      doc.text(`Poll Report  |  ${dateRange}  |  Generated: ${today}`, pageW / 2, 27, { align: "center" });
+      doc.text(
+        exportMode === "category"
+          ? `Category-wise Billing Report  |  ${dateRange}  |  Generated: ${today}`
+          : `Poll Report  |  ${dateRange}  |  Generated: ${today}`, 
+        pageW / 2, 
+        27, 
+        { align: "center" }
+      );
 
       let cursorY = 46;
 
@@ -260,44 +396,135 @@ export default function ExportPage() {
         const mobile = `${employee.countryCode || ""}${employee.mobileNo || ""}`.trim() || "N/A";
 
         doc.setFillColor(207, 226, 232);
-        doc.roundedRect(14, cursorY, pageW - 28, 24, 2, 2, "F");
+        doc.roundedRect(14, cursorY, pageW - 28, 18, 2, 2, "F");
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setTextColor(21, 94, 117);
-        doc.text(employee.name, 20, cursorY + 9);
+        doc.text(employee.name, 20, cursorY + 7);
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setTextColor(40, 116, 140);
         const detailParts = [
           `Mobile: ${mobile}`,
           employee.branch ? `Branch: ${employee.branch}` : null,
           employee.department ? `Dept: ${employee.department}` : null,
         ].filter(Boolean).join("   |   ");
-        doc.text(detailParts, 20, cursorY + 18);
+        doc.text(detailParts, 20, cursorY + 13);
 
-        cursorY += 30;
+        cursorY += 24;
 
         // ── Poll responses table ────────────────────────
-        const tableBody = votes.length > 0
-          ? votes.map(v => [formatDate(v.date), v.question, v.selectedAnswer])
-          : [["—", "No poll responses in this period", "—"]];
+        if (exportMode === "category") {
+          const headRow = ["Date"];
+          categories.forEach(cat => {
+            headRow.push(cat);
+            headRow.push(`${cat} Qty`);
+          });
+          headRow.push("Extra");
+          headRow.push("Details");
 
-        autoTable(doc, {
-          startY: cursorY,
-          head: [["Date", "Question", "Selected Answer"]],
-          body: tableBody,
-          styles: { fontSize: 9, cellPadding: 4, font: "helvetica", textColor: [30, 30, 30], overflow: "linebreak" },
-          headStyles: { fillColor: [21, 94, 117], textColor: [255, 255, 255], fontStyle: "bold" },
-          columnStyles: {
-            0: { cellWidth: 28, halign: "center" },
-            1: { cellWidth: "auto" },
-            2: { cellWidth: 45 },
-          },
-          alternateRowStyles: { fillColor: [248, 248, 248] },
-          margin: { left: 14, right: 14 },
-        });
+          // Gather all dates from polls and votes
+          const dateKeys = new Set<string>();
+          polls.forEach(p => {
+            if (p.scheduledAt) dateKeys.add(p.scheduledAt.split("T")[0]);
+          });
+          votes.forEach(v => {
+            if (v.date) dateKeys.add(v.date.split("T")[0]);
+          });
+
+          let sortedDates = Array.from(dateKeys).sort();
+          if (startDate) sortedDates = sortedDates.filter(d => d >= startDate);
+          if (endDate) sortedDates = sortedDates.filter(d => d <= endDate);
+
+          const tableBody = sortedDates.map(dateStr => {
+            const displayDate = formatDate(dateStr);
+            const row = [displayDate];
+            
+            let extraComment = "";
+            let detailsText = "";
+
+            categories.forEach(cat => {
+              const hasPoll = polls.some(p => p.category === cat && p.scheduledAt && p.scheduledAt.split("T")[0] === dateStr);
+              const catVotes = votes.filter(v => v.category === cat && v.date && v.date.split("T")[0] === dateStr);
+
+              if (hasPoll) {
+                row.push("Yes");
+                row.push(catVotes.length > 0 ? String(catVotes.length) : "0");
+              } else {
+                row.push("No");
+                row.push("-");
+              }
+
+              catVotes.forEach(v => {
+                if (v.selectedAnswer.includes("Others") || v.selectedAnswer.includes("comment")) {
+                  extraComment = extraComment ? `${extraComment}; ${v.selectedAnswer}` : v.selectedAnswer;
+                }
+                const detail = `${v.question}: ${v.selectedAnswer}`;
+                detailsText = detailsText ? `${detailsText}; ${detail}` : detail;
+              });
+            });
+
+            row.push(extraComment || "-");
+            row.push(detailsText || "-");
+            return row;
+          });
+
+          autoTable(doc, {
+            startY: cursorY,
+            head: [headRow],
+            body: tableBody.length > 0 ? tableBody : [["—", ...categories.flatMap(() => ["—", "—"]), "—", "No responses in this period"]],
+            styles: { fontSize: 8, cellPadding: 2, font: "helvetica", textColor: [30, 30, 30], overflow: "linebreak" },
+            headStyles: { fillColor: [21, 94, 117], textColor: [255, 255, 255], fontStyle: "bold" },
+            alternateRowStyles: { fillColor: [248, 248, 248] },
+            margin: { left: 14, right: 14, bottom: 15 },
+          });
+
+          // Summary section
+          const summaryBody = categories.map(cat => {
+            let total = 0;
+            sortedDates.forEach(dateStr => {
+              const hasPoll = polls.some(p => p.category === cat && p.scheduledAt && p.scheduledAt.split("T")[0] === dateStr);
+              const catVotes = votes.filter(v => v.category === cat && v.date && v.date.split("T")[0] === dateStr);
+              if (hasPoll && catVotes.length > 0) {
+                total += catVotes.length;
+              }
+            });
+            return [cat.charAt(0).toUpperCase() + cat.slice(1), String(total)];
+          });
+
+          const finalY = (doc as any).lastAutoTable?.finalY || cursorY;
+
+          autoTable(doc, {
+            startY: finalY + 4,
+            head: [["Category", "Total Quantity"]],
+            body: summaryBody,
+            styles: { fontSize: 8, cellPadding: 1.5, font: "helvetica", textColor: [30, 30, 30] },
+            headStyles: { fillColor: [40, 116, 140], textColor: [255, 255, 255], fontStyle: "bold" },
+            margin: { left: 14, bottom: 15 },
+            tableWidth: 80,
+          });
+        } else {
+          const tableBody = votes.length > 0
+            ? votes.map(v => [formatDate(v.date), v.question, v.selectedAnswer])
+            : [["—", "No poll responses in this period", "—"]];
+
+          autoTable(doc, {
+            startY: cursorY,
+            head: [["Date", "Question", "Selected Answer"]],
+            body: tableBody,
+            styles: { fontSize: 9, cellPadding: 4, font: "helvetica", textColor: [30, 30, 30], overflow: "linebreak" },
+            headStyles: { fillColor: [21, 94, 117], textColor: [255, 255, 255], fontStyle: "bold" },
+            columnStyles: {
+              0: { cellWidth: 28, halign: "center" },
+              1: { cellWidth: "auto" },
+              2: { cellWidth: 45 },
+            },
+            alternateRowStyles: { fillColor: [248, 248, 248] },
+            margin: { left: 14, right: 14 },
+          });
+        }
 
         cursorY = (doc as any).lastAutoTable.finalY + 8;
       });
@@ -377,6 +604,36 @@ export default function ExportPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Filters */}
         <section className="space-y-6">
+          <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl p-6 shadow-xl">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              Export Mode
+            </h3>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-[#242424] rounded-xl border border-[#333]">
+              <button
+                type="button"
+                onClick={() => setExportMode("option")}
+                className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                  exportMode === "option"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Option-wise
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportMode("category")}
+                className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                  exportMode === "category"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Category-wise
+              </button>
+            </div>
+          </div>
+
           <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl p-6 shadow-xl">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
               <ChevronDown size={16} className="text-blue-500" /> Quick Filters

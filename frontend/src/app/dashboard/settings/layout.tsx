@@ -10,7 +10,8 @@ import {
   Users, 
   ShieldCheck, 
   CreditCard, 
-  AlertTriangle 
+  AlertTriangle,
+  Tag
 } from "lucide-react";
 
 const SETTINGS_NAV = [
@@ -25,6 +26,7 @@ const SETTINGS_NAV = [
     items: [
       { name: "Notifications", href: "/dashboard/settings/notifications", icon: Bell },
       { name: "Appearance", href: "/dashboard/settings/appearance", icon: Palette },
+      { name: "Categories", href: "/dashboard/settings/categories", icon: Tag },
     ]
   },
   { 
